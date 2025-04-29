@@ -32,6 +32,7 @@ class Game:
         self.timers = {
             'vertical move': Timer(UPDATE_START_SPEED, True, self.move_down),
             'horizontal move': Timer(MOVE_WAIT_TIME),
+            'move down': Timer(MOVE_WAIT_TIME),
             'rotate': Timer(ROTATE_WAIT_TIME),
             'touch down': Timer(MOVE_WAIT_TIME)
         }
@@ -75,10 +76,14 @@ class Game:
             if keys[pygame.K_RIGHT]:
                 self.tetromino.move_horizontal(1)
                 self.timers['horizontal move'].activate()
-            if keys[pygame.K_DOWN]:
+            if keys[pygame.K_SPACE]:
                 self.tetromino.touch_down()
                 self.timers['horizontal move'].activate()
-
+        
+        if not self.timers['move down'].active:
+            if keys[pygame.K_DOWN]:
+                self.tetromino.move_down()
+                self.timers['move down'].activate()
 
         if not self.timers['rotate'].active:
             if keys[pygame.K_UP]:
@@ -217,14 +222,18 @@ class Tetromino:
 
             # collision check
             for pos in new_block_positions:
-                # horizontal
-                if pos.x < 0 or pos.x >= COLUMNS:
+                x, y = int(pos.x), int(pos.y)
+
+                # Blocked by walls
+                if x < 0 or x >= COLUMNS:
                     return
-                # piece collision
-                if self.field_data[int(pos.y)][int(pos.x)]:
+
+                # Blocked by floor
+                if y >= ROWS:
                     return
-                # vertical
-                if pos.y > ROWS - 1:
+
+                # Only check for occupied cells if within the visible field
+                if y >= 0 and self.field_data[y][x]:
                     return
 
             for i, block in enumerate(self.blocks):
