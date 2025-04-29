@@ -4,13 +4,16 @@ from timer import Timer
 
 class Game: 
     
-    def __init__(self):
+    def __init__(self, get_next_shape):
 
         # general
         self.surface = pygame.Surface((GAME_WIDTH, GAME_HEIGHT))
         self.display_surface = pygame.display.get_surface()
         self.rect = self.surface.get_rect(topleft = (PADDING,PADDING))
         self.sprites = pygame.sprite.Group()
+
+        # game connection
+        self.get_next_shape = get_next_shape
 
         # lines
         self.line_surface = self.surface.copy()
@@ -38,7 +41,8 @@ class Game:
          
          self.check_finished_rows()
          self.tetromino = Tetromino(
-            choice(list(TETROMINOS.keys())),self.sprites,
+            self.get_next_shape(),
+            self.sprites,
             self.create_new_tetromino,
             self.field_data)
 
@@ -182,8 +186,12 @@ class Tetromino:
             distance = 0
             while True:
                 new_y = int(block.pos.y + distance + 1)
-                if new_y >= ROWS or self.field_data[new_y][int(block.pos.x)]:
+                if new_y >= ROWS: 
                     break
+
+                if new_y >= 0 and self.field_data[new_y][int(block.pos.x)]:
+                    break
+
                 distance += 1
             drop_distances.append(distance)
 
@@ -191,7 +199,9 @@ class Tetromino:
 
         for block in self.blocks:
             block.pos.y += min_drop
-            self.field_data[int(block.pos.y)][int(block.pos.x)] = block
+            y, x = int(block.pos.y), int(block.pos.x)
+            if y >= 0:
+                self.field_data[y][x] = block
 
         self.create_new_tetromino()
 
@@ -238,9 +248,10 @@ class Block(pygame.sprite.Sprite):
     def horizontal_collide(self,x, field_data):
         if not 0 <= x < COLUMNS:
             return True
-        
-        if field_data[int(self.pos.y)][x]:
+        y = int(self.pos.y)
+        if 0 <= y < ROWS and field_data[y][x]:
             return True
+        return False
         
     def vertical_collide(self,y, field_data):
         if y >= ROWS:
@@ -248,6 +259,7 @@ class Block(pygame.sprite.Sprite):
         
         if y >= 0 and field_data[y][int(self.pos.x)]:
             return True
+        return False
 
     def update(self):
         self.rect.topleft = self.pos * CELL_SIZE
