@@ -115,6 +115,11 @@ class Game:
 
         # drawing
         self.surface.fill(GRAY)
+        ghost_positions = self.tetromino.get_ghost_position()
+        for pos in ghost_positions:
+            rect = pygame.Rect(pos.x * CELL_SIZE, pos.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+            pygame.draw.rect(self.surface, self.tetromino.color, rect, width=2)  # Outlined ghost
+
         self.sprites.draw(self.surface)
 
         self.draw_grid()
@@ -133,6 +138,18 @@ class Tetromino:
 
         # create blocks
         self.blocks = [Block(group, pos, self.color) for pos in self.block_positions]
+
+    def get_ghost_position(self):
+        ghost_positions = [block.pos.copy() for block in self.blocks]
+
+        while True:
+            for pos in ghost_positions:
+                x, y = int(pos.x), int(pos.y + 1)
+                if y >= ROWS or self.field_data[y][x]:
+                    return ghost_positions  # Stop if any part would collide
+            # Move all ghost blocks down
+            for pos in ghost_positions:
+                pos.y += 1
 
     # collisions
     def next_move_horizontal_collide(self, blocks, amount):
