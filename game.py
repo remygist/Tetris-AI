@@ -12,6 +12,7 @@ class Game:
         self.display_surface = pygame.display.get_surface()
         self.rect = self.surface.get_rect(topleft = (PADDING,PADDING))
         self.sprites = pygame.sprite.Group()
+        self.game_over = False
 
         # game connection
         self.get_next_shape = get_next_shape
@@ -57,17 +58,23 @@ class Game:
 
     def check_game_over(self):
         for block in self.tetromino.blocks:
-            if block.pos.y < 0:
-                exit()
+            x, y = int(block.pos.x), int(block.pos.y)
+            if y >= 0 and self.field_data[y][x]:  # Only check visible rows
+                return True
+        return False
 
-    def create_new_tetromino(self):
-         self.check_game_over()
-         self.check_finished_rows()
-         self.tetromino = Tetromino(
+    def create_new_tetromino(self, game_over=False):
+        if game_over:
+            self.game_over = True
+            return
+
+        self.check_finished_rows()
+        self.tetromino = Tetromino(
             self.get_next_shape(),
             self.sprites,
             self.create_new_tetromino,
-            self.field_data)
+            self.field_data
+    )
 
     def timer_update(self):
         for timer in self.timers.values():
@@ -111,7 +118,6 @@ class Game:
             if keys[pygame.K_UP]:
                 self.tetromino.rotate()
                 self.timers['rotate'].activate()
-
 
     def check_finished_rows(self):
         # get row indexes
@@ -199,9 +205,14 @@ class Tetromino:
             for block in self.blocks:
                 block.pos.y += 1
         else:
+            game_over = any(block.pos.y < 0 for block in self.blocks)
+
             for block in self.blocks:
-                self.field_data[int(block.pos.y)][int(block.pos.x)] = block
-            self.create_new_tetromino()
+                y, x = int(block.pos.y), int(block.pos.x)
+                if y >= 0:
+                    self.field_data[y][x] = block
+
+            self.create_new_tetromino(game_over=game_over)
     
     def move_horizontal(self, amount):
         if not self.next_move_horizontal_collide(self.blocks, amount):
@@ -217,22 +228,23 @@ class Tetromino:
                 new_y = int(block.pos.y + distance + 1)
                 if new_y >= ROWS: 
                     break
-
                 if new_y >= 0 and self.field_data[new_y][int(block.pos.x)]:
                     break
-
                 distance += 1
             drop_distances.append(distance)
 
         min_drop = min(drop_distances)
 
+        game_over = False
         for block in self.blocks:
             block.pos.y += min_drop
+            if block.pos.y < 0:
+                game_over = True
             y, x = int(block.pos.y), int(block.pos.x)
             if y >= 0:
                 self.field_data[y][x] = block
 
-        self.create_new_tetromino()
+        self.create_new_tetromino(game_over=game_over)
 
     # rotate
     def rotate(self):
