@@ -4,13 +4,17 @@ from timer import Timer
 
 class Game: 
     
-    def __init__(self):
+    def __init__(self, get_next_shape, update_score):
 
         # general
         self.surface = pygame.Surface((GAME_WIDTH, GAME_HEIGHT))
         self.display_surface = pygame.display.get_surface()
         self.rect = self.surface.get_rect(topleft = (PADDING,PADDING))
         self.sprites = pygame.sprite.Group()
+
+        # game connection
+        self.get_next_shape = get_next_shape
+        self.update_score = update_score
 
         # lines
         self.line_surface = self.surface.copy()
@@ -26,19 +30,36 @@ class Game:
             self.field_data)
 
         # timer
+        self.down_speed = UPDATE_START_SPEED
+        self.down_speed_faster = self.down_speed * 0.3
         self.timers = {
-            'vertical move': Timer(UPDATE_START_SPEED, True, self.move_down),
+            'vertical move': Timer(self.down_speed, True, self.move_down),
             'horizontal move': Timer(MOVE_WAIT_TIME),
+            'move down': Timer(MOVE_WAIT_TIME),
             'rotate': Timer(ROTATE_WAIT_TIME),
             'touch down': Timer(MOVE_WAIT_TIME)
         }
         self.timers['vertical move'].activate()
 
+        # score
+        self.current_level = 1
+        self.current_score = 0
+        self.current_lines = 0
+    
+    def calculate_score(self, num_lines):
+        self.current_lines += num_lines
+        self.current_score += SCORE_DATA[num_lines] * self.current_level
+
+        if self.current_lines/10 > self.current_level:
+            self.current_level += 1
+        self.update_score(self.current_lines, self.current_score, self.current_level)
+
     def create_new_tetromino(self):
          
          self.check_finished_rows()
          self.tetromino = Tetromino(
-            choice(list(TETROMINOS.keys())),self.sprites,
+            self.get_next_shape(),
+            self.sprites,
             self.create_new_tetromino,
             self.field_data)
 
@@ -71,10 +92,14 @@ class Game:
             if keys[pygame.K_RIGHT]:
                 self.tetromino.move_horizontal(1)
                 self.timers['horizontal move'].activate()
-            if keys[pygame.K_DOWN]:
+            if keys[pygame.K_SPACE]:
                 self.tetromino.touch_down()
                 self.timers['horizontal move'].activate()
-
+        
+        if not self.timers['move down'].active:
+            if keys[pygame.K_DOWN]:
+                self.tetromino.move_down()
+                self.timers['move down'].activate()
 
         if not self.timers['rotate'].active:
             if keys[pygame.K_UP]:
@@ -106,6 +131,8 @@ class Game:
             for block in self.sprites:
                 self.field_data[int(block.pos.y)][int(block.pos.x)] = block
 
+            # update score
+            self.calculate_score(len(delete_rows))
     def run(self):
 
         # update
@@ -182,8 +209,12 @@ class Tetromino:
             distance = 0
             while True:
                 new_y = int(block.pos.y + distance + 1)
-                if new_y >= ROWS or self.field_data[new_y][int(block.pos.x)]:
+                if new_y >= ROWS: 
                     break
+
+                if new_y >= 0 and self.field_data[new_y][int(block.pos.x)]:
+                    break
+
                 distance += 1
             drop_distances.append(distance)
 
@@ -191,7 +222,9 @@ class Tetromino:
 
         for block in self.blocks:
             block.pos.y += min_drop
-            self.field_data[int(block.pos.y)][int(block.pos.x)] = block
+            y, x = int(block.pos.y), int(block.pos.x)
+            if y >= 0:
+                self.field_data[y][x] = block
 
         self.create_new_tetromino()
 
@@ -207,14 +240,18 @@ class Tetromino:
 
             # collision check
             for pos in new_block_positions:
-                # horizontal
-                if pos.x < 0 or pos.x >= COLUMNS:
+                x, y = int(pos.x), int(pos.y)
+
+                # Blocked by walls
+                if x < 0 or x >= COLUMNS:
                     return
-                # piece collision
-                if self.field_data[int(pos.y)][int(pos.x)]:
+
+                # Blocked by floor
+                if y >= ROWS:
                     return
-                # vertical
-                if pos.y > ROWS - 1:
+
+                # Only check for occupied cells if within the visible field
+                if y >= 0 and self.field_data[y][x]:
                     return
 
             for i, block in enumerate(self.blocks):
@@ -238,9 +275,10 @@ class Block(pygame.sprite.Sprite):
     def horizontal_collide(self,x, field_data):
         if not 0 <= x < COLUMNS:
             return True
-        
-        if field_data[int(self.pos.y)][x]:
+        y = int(self.pos.y)
+        if 0 <= y < ROWS and field_data[y][x]:
             return True
+        return False
         
     def vertical_collide(self,y, field_data):
         if y >= ROWS:
@@ -248,6 +286,7 @@ class Block(pygame.sprite.Sprite):
         
         if y >= 0 and field_data[y][int(self.pos.x)]:
             return True
+        return False
 
     def update(self):
         self.rect.topleft = self.pos * CELL_SIZE
