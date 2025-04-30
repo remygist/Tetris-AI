@@ -49,38 +49,36 @@ class Main:
 
     def run(self):
         while True:
-            for event in pygame.event.get():
+            events = pygame.event.get()
+
+            for event in events:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     exit()
-                
                 if self.state == 'start' and event.type == pygame.KEYDOWN:
                     self.reset_game()
                     self.state = 'playing'
-                
                 if self.state == 'game_over' and event.type == pygame.KEYDOWN:
                     self.reset_game()
                     self.state = 'playing'
 
-            # display
             self.display_surface.fill(GRAY)
 
             if self.state == 'start':
                 draw_start_screen(self.display_surface)
             elif self.state == 'playing':
-                self.game.run()
+                self.game.run(events)
                 self.score.run()
                 self.preview.run()
 
                 if self.game.game_over:
                     self.state = 'game_over'
-                    
             elif self.state == 'game_over':
                 draw_game_over_screen(self.display_surface, self.score.score)
 
-            # updating game
             pygame.display.update()
             self.clock.tick()
+
 
 
 if __name__ == '__main__':

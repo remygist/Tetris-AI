@@ -95,29 +95,32 @@ class Game:
 
         self.surface.blit(self.line_surface, (0,0))
 
-    def input(self):
+    def input(self, event):
+    # One-time actions (on key press)
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP and not self.timers['rotate'].active:
+                self.tetromino.rotate()
+                self.timers['rotate'].activate()
+
+            if event.key == pygame.K_SPACE and not self.timers['touch down'].active:
+                self.tetromino.touch_down()
+                self.timers['touch down'].activate()
+
+        # Continuous actions (key held)
         keys = pygame.key.get_pressed()
 
         if not self.timers['horizontal move'].active:
             if keys[pygame.K_LEFT]:
                 self.tetromino.move_horizontal(-1)
                 self.timers['horizontal move'].activate()
-            if keys[pygame.K_RIGHT]:
+            elif keys[pygame.K_RIGHT]:
                 self.tetromino.move_horizontal(1)
                 self.timers['horizontal move'].activate()
-            if keys[pygame.K_SPACE]:
-                self.tetromino.touch_down()
-                self.timers['horizontal move'].activate()
-        
-        if not self.timers['move down'].active:
-            if keys[pygame.K_DOWN]:
-                self.tetromino.move_down()
-                self.timers['move down'].activate()
 
-        if not self.timers['rotate'].active:
-            if keys[pygame.K_UP]:
-                self.tetromino.rotate()
-                self.timers['rotate'].activate()
+        if keys[pygame.K_DOWN] and not self.timers['move down'].active:
+            self.tetromino.move_down()
+            self.timers['move down'].activate()
+
 
     def check_finished_rows(self):
         # get row indexes
@@ -145,10 +148,27 @@ class Game:
 
             # update score
             self.calculate_score(len(delete_rows))
-    def run(self):
+    
+    def run(self, events):
+        # Process single-tap keys (rotation, hard drop)
+        for event in events:
+            self.input(event)
 
-        # update
-        self.input()
+        # Process held keys (left/right/down movement)
+        keys = pygame.key.get_pressed()
+
+        if not self.timers['horizontal move'].active:
+            if keys[pygame.K_LEFT]:
+                self.tetromino.move_horizontal(-1)
+                self.timers['horizontal move'].activate()
+            elif keys[pygame.K_RIGHT]:
+                self.tetromino.move_horizontal(1)
+                self.timers['horizontal move'].activate()
+
+        if keys[pygame.K_DOWN] and not self.timers['move down'].active:
+            self.tetromino.move_down()
+            self.timers['move down'].activate()
+
         self.timer_update()
         self.sprites.update()
 
@@ -160,9 +180,8 @@ class Game:
             pygame.draw.rect(self.surface, self.tetromino.color, rect, width=2)  # Outlined ghost
 
         self.sprites.draw(self.surface)
-
         self.draw_grid()
-        self.display_surface.blit(self.surface, (PADDING,PADDING))
+        self.display_surface.blit(self.surface, (PADDING, PADDING))
         pygame.draw.rect(self.display_surface, LINE_COLOR, self.rect, 2, 2)
 
 class Tetromino:
