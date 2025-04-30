@@ -54,6 +54,10 @@ class Game:
 
         if self.current_lines/10 > self.current_level:
             self.current_level += 1
+            self.down_speed *= 0.75
+            self.down_speed_faster = self.down_speed * 0.3
+            self.timers['vertical move'].duration = self.down_speed
+
         self.update_score(self.current_lines, self.current_score, self.current_level)
 
     def check_game_over(self):
@@ -121,7 +125,6 @@ class Game:
             self.tetromino.move_down()
             self.timers['move down'].activate()
 
-
     def check_finished_rows(self):
         # get row indexes
         delete_rows = []
@@ -185,6 +188,7 @@ class Game:
         pygame.draw.rect(self.display_surface, LINE_COLOR, self.rect, 2, 2)
 
 class Tetromino:
+
     def __init__(self, shape, group, create_new_tetromino, field_data):
 
         # setup
@@ -295,6 +299,7 @@ class Tetromino:
                 block.pos = new_block_positions[i]
 
 class Block(pygame.sprite.Sprite):
+
     def __init__(self, group, pos, color):
 
         # general
