@@ -1,5 +1,6 @@
 from settings import *
 from random import choice
+from sys import exit
 from timer import Timer
 
 class Game: 
@@ -11,6 +12,7 @@ class Game:
         self.display_surface = pygame.display.get_surface()
         self.rect = self.surface.get_rect(topleft = (PADDING,PADDING))
         self.sprites = pygame.sprite.Group()
+        self.game_over = False
 
         # game connection
         self.get_next_shape = get_next_shape
@@ -52,16 +54,31 @@ class Game:
 
         if self.current_lines/10 > self.current_level:
             self.current_level += 1
+            self.down_speed *= 0.75
+            self.down_speed_faster = self.down_speed * 0.3
+            self.timers['vertical move'].duration = self.down_speed
+
         self.update_score(self.current_lines, self.current_score, self.current_level)
 
-    def create_new_tetromino(self):
-         
-         self.check_finished_rows()
-         self.tetromino = Tetromino(
+    def check_game_over(self):
+        for block in self.tetromino.blocks:
+            x, y = int(block.pos.x), int(block.pos.y)
+            if y >= 0 and self.field_data[y][x]:  # Only check visible rows
+                return True
+        return False
+
+    def create_new_tetromino(self, game_over=False):
+        if game_over:
+            self.game_over = True
+            return
+
+        self.check_finished_rows()
+        self.tetromino = Tetromino(
             self.get_next_shape(),
             self.sprites,
             self.create_new_tetromino,
-            self.field_data)
+            self.field_data
+    )
 
     def timer_update(self):
         for timer in self.timers.values():
@@ -82,30 +99,31 @@ class Game:
 
         self.surface.blit(self.line_surface, (0,0))
 
-    def input(self):
+    def input(self, event):
+    # One-time actions (on key press)
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP and not self.timers['rotate'].active:
+                self.tetromino.rotate()
+                self.timers['rotate'].activate()
+
+            if event.key == pygame.K_SPACE and not self.timers['touch down'].active:
+                self.tetromino.touch_down()
+                self.timers['touch down'].activate()
+
+        # Continuous actions (key held)
         keys = pygame.key.get_pressed()
 
         if not self.timers['horizontal move'].active:
             if keys[pygame.K_LEFT]:
                 self.tetromino.move_horizontal(-1)
                 self.timers['horizontal move'].activate()
-            if keys[pygame.K_RIGHT]:
+            elif keys[pygame.K_RIGHT]:
                 self.tetromino.move_horizontal(1)
                 self.timers['horizontal move'].activate()
-            if keys[pygame.K_SPACE]:
-                self.tetromino.touch_down()
-                self.timers['horizontal move'].activate()
-        
-        if not self.timers['move down'].active:
-            if keys[pygame.K_DOWN]:
-                self.tetromino.move_down()
-                self.timers['move down'].activate()
 
-        if not self.timers['rotate'].active:
-            if keys[pygame.K_UP]:
-                self.tetromino.rotate()
-                self.timers['rotate'].activate()
-
+        if keys[pygame.K_DOWN] and not self.timers['move down'].active:
+            self.tetromino.move_down()
+            self.timers['move down'].activate()
 
     def check_finished_rows(self):
         # get row indexes
@@ -133,10 +151,27 @@ class Game:
 
             # update score
             self.calculate_score(len(delete_rows))
-    def run(self):
+    
+    def run(self, events):
+        # Process single-tap keys (rotation, hard drop)
+        for event in events:
+            self.input(event)
 
-        # update
-        self.input()
+        # Process held keys (left/right/down movement)
+        keys = pygame.key.get_pressed()
+
+        if not self.timers['horizontal move'].active:
+            if keys[pygame.K_LEFT]:
+                self.tetromino.move_horizontal(-1)
+                self.timers['horizontal move'].activate()
+            elif keys[pygame.K_RIGHT]:
+                self.tetromino.move_horizontal(1)
+                self.timers['horizontal move'].activate()
+
+        if keys[pygame.K_DOWN] and not self.timers['move down'].active:
+            self.tetromino.move_down()
+            self.timers['move down'].activate()
+
         self.timer_update()
         self.sprites.update()
 
@@ -148,12 +183,12 @@ class Game:
             pygame.draw.rect(self.surface, self.tetromino.color, rect, width=2)  # Outlined ghost
 
         self.sprites.draw(self.surface)
-
         self.draw_grid()
-        self.display_surface.blit(self.surface, (PADDING,PADDING))
+        self.display_surface.blit(self.surface, (PADDING, PADDING))
         pygame.draw.rect(self.display_surface, LINE_COLOR, self.rect, 2, 2)
 
 class Tetromino:
+
     def __init__(self, shape, group, create_new_tetromino, field_data):
 
         # setup
@@ -193,9 +228,14 @@ class Tetromino:
             for block in self.blocks:
                 block.pos.y += 1
         else:
+            game_over = any(block.pos.y < 0 for block in self.blocks)
+
             for block in self.blocks:
-                self.field_data[int(block.pos.y)][int(block.pos.x)] = block
-            self.create_new_tetromino()
+                y, x = int(block.pos.y), int(block.pos.x)
+                if y >= 0:
+                    self.field_data[y][x] = block
+
+            self.create_new_tetromino(game_over=game_over)
     
     def move_horizontal(self, amount):
         if not self.next_move_horizontal_collide(self.blocks, amount):
@@ -211,22 +251,23 @@ class Tetromino:
                 new_y = int(block.pos.y + distance + 1)
                 if new_y >= ROWS: 
                     break
-
                 if new_y >= 0 and self.field_data[new_y][int(block.pos.x)]:
                     break
-
                 distance += 1
             drop_distances.append(distance)
 
         min_drop = min(drop_distances)
 
+        game_over = False
         for block in self.blocks:
             block.pos.y += min_drop
+            if block.pos.y < 0:
+                game_over = True
             y, x = int(block.pos.y), int(block.pos.x)
             if y >= 0:
                 self.field_data[y][x] = block
 
-        self.create_new_tetromino()
+        self.create_new_tetromino(game_over=game_over)
 
     # rotate
     def rotate(self):
@@ -258,6 +299,7 @@ class Tetromino:
                 block.pos = new_block_positions[i]
 
 class Block(pygame.sprite.Sprite):
+
     def __init__(self, group, pos, color):
 
         # general
