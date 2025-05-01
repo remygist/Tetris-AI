@@ -20,6 +20,7 @@ class Main:
         self.display_surface = pygame.display.set_mode((WINDOW_WIDTH,WINDOW_HEIGHT))
         self.clock = pygame.time.Clock()
         pygame.display.set_caption('Tetris')
+        self.input_blocked_until = 0
 
         # shapes
         self.next_shapes = [choice(list(TETROMINOS.keys())) for shape in range(3)]
@@ -58,16 +59,21 @@ class Main:
                 if self.state == 'start' and event.type == pygame.KEYDOWN:
                     self.reset_game()
                     self.state = 'playing'
+                    self.input_blocked_until = pygame.time.get_ticks() + 200
                 if self.state == 'game_over' and event.type == pygame.KEYDOWN:
                     self.reset_game()
                     self.state = 'playing'
+                    self.input_blocked_until = pygame.time.get_ticks() + 200
 
             self.display_surface.fill(GRAY)
 
             if self.state == 'start':
                 draw_start_screen(self.display_surface)
             elif self.state == 'playing':
-                self.game.run(events)
+                if pygame.time.get_ticks() < self.input_blocked_until:
+                    self.game.run([])  
+                else:
+                    self.game.run(events)
                 self.score.run()
                 self.preview.run()
 
