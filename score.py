@@ -2,9 +2,9 @@ from settings import *
 from os.path import join
 
 class Score:
-    def __init__(self):
-        self.surface = pygame.Surface((SIDEBAR_WIDTH, GAME_HEIGHT * SCORE_HEIGHT_FRACTION - PADDING))
-        self.rect = self.surface.get_rect(bottomright = (WINDOW_WIDTH - PADDING, WINDOW_HEIGHT - PADDING))
+    def __init__(self, topleft=(PADDING, PADDING)):
+        self.surface = pygame.Surface((SIDEBAR_WIDTH, 150))
+        self.rect = self.surface.get_rect(topleft = topleft)
         self.display_surface = pygame.display.get_surface()
 
         # font
@@ -25,6 +25,9 @@ class Score:
 
     def run(self):
         self.surface.fill(GRAY)
+        print('window height', WINDOW_HEIGHT)
+        print('window widht', WINDOW_WIDTH)
+        print('score run called', self.rect.topleft)
         for i, text in enumerate([('Score', self.score), ('Level',self.level), ('Lines', self.lines)]):
             x = self.surface.get_width() / 2
             y = self.increment_height / 2 + i * self.increment_height

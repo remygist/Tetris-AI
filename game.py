@@ -5,12 +5,12 @@ from timer import Timer
 
 class Game: 
     
-    def __init__(self, get_next_shape, update_score):
+    def __init__(self, get_next_shape, update_score, topleft=(PADDING, PADDING)):
 
         # general
         self.surface = pygame.Surface((GAME_WIDTH, GAME_HEIGHT))
         self.display_surface = pygame.display.get_surface()
-        self.rect = self.surface.get_rect(topleft = (PADDING,PADDING))
+        self.rect = self.surface.get_rect(topleft = topleft)
         self.sprites = pygame.sprite.Group()
         self.game_over = False
 
@@ -184,7 +184,7 @@ class Game:
 
         self.sprites.draw(self.surface)
         self.draw_grid()
-        self.display_surface.blit(self.surface, (PADDING, PADDING))
+        self.display_surface.blit(self.surface, self.rect.topleft)
         pygame.draw.rect(self.display_surface, LINE_COLOR, self.rect, 2, 2)
 
 class Tetromino:
