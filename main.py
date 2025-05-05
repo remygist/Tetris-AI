@@ -8,6 +8,7 @@ from score import Score
 from preview import Preview
 from interface.start_screen import draw_start_screen
 from interface.game_over_screen import draw_game_over_screen
+from bag_generator import BagGenerator
 
 
 from random import choice
@@ -23,7 +24,8 @@ class Main:
         self.input_blocked_until = 0
 
         # shapes
-        self.next_shapes = [choice(list(TETROMINOS.keys())) for shape in range(3)]
+        self.bag = BagGenerator()
+        self.next_shapes = [self.bag.get_next() for shape in range(3)]
 
         # components
         self.game = Game(self.get_next_shape, self.update_score)
@@ -38,13 +40,14 @@ class Main:
 
     def get_next_shape(self):
         next_shape = self.next_shapes.pop(0)
-        self.next_shapes.append(choice(list(TETROMINOS.keys())))
+        self.next_shapes.append(self.bag.get_next())
         return next_shape
 
     def reset_game(self):
-        self.next_shapes = [choice(list(TETROMINOS.keys())) for _ in range(3)]
-        self.game = Game(self.get_next_shape, self.update_score)
+        self.bag = BagGenerator()
+        self.next_shapes = [self.bag.get_next() for _ in range(3)]
         self.score = Score()
+        self.game = Game(self.get_next_shape, self.update_score)
         self.preview = Preview(self.next_shapes)
 
 

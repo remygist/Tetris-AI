@@ -198,6 +198,13 @@ class Tetromino:
         self.create_new_tetromino = create_new_tetromino
         self.field_data = field_data
 
+        # piece locking
+        self.lock_timer = 0
+        self.lock_delay = LOCK_DELAY
+        self.locking = False
+        self.lock_resets = 0
+        self.max_lock_resets = 5
+
         # create blocks
         self.blocks = [Block(group, pos, self.color) for pos in self.block_positions]
 
@@ -227,20 +234,26 @@ class Tetromino:
         if not self.next_move_vertical_collide(self.blocks, 1):
             for block in self.blocks:
                 block.pos.y += 1
+            self.locking = False
+            self.lock_resets = 0
         else:
-            game_over = any(block.pos.y < 0 for block in self.blocks)
-
-            for block in self.blocks:
-                y, x = int(block.pos.y), int(block.pos.x)
-                if y >= 0:
-                    self.field_data[y][x] = block
-
-            self.create_new_tetromino(game_over=game_over)
+            if not self.locking:
+                self.locking = True
+                self.lock_timer = pygame.time.get_ticks()
+            elif pygame.time.get_ticks() - self.lock_timer >= self.lock_delay:
+                self.force_lock()
     
     def move_horizontal(self, amount):
         if not self.next_move_horizontal_collide(self.blocks, amount):
             for block in self.blocks:
                 block.pos.x += amount
+
+            if self.locking:
+                self.lock_resets += 1
+                self.lock_timer = pygame.time.get_ticks()
+                if self.lock_resets >= self.max_lock_resets:
+                    self.force_lock()
+
     
     def touch_down(self):
         drop_distances = []
@@ -272,31 +285,32 @@ class Tetromino:
     # rotate
     def rotate(self):
         if self.shape != 'O':
-
-            # pivot point
             pivot_pos = self.blocks[0].pos
-
-            # new block pos
             new_block_positions = [block.rotate(pivot_pos) for block in self.blocks]
 
-            # collision check
             for pos in new_block_positions:
                 x, y = int(pos.x), int(pos.y)
-
-                # Blocked by walls
-                if x < 0 or x >= COLUMNS:
+                if x < 0 or x >= COLUMNS or y >= ROWS:
                     return
-
-                # Blocked by floor
-                if y >= ROWS:
-                    return
-
-                # Only check for occupied cells if within the visible field
                 if y >= 0 and self.field_data[y][x]:
                     return
 
             for i, block in enumerate(self.blocks):
                 block.pos = new_block_positions[i]
+
+            if self.locking:
+                self.lock_resets += 1
+                self.lock_timer = pygame.time.get_ticks()
+                if self.lock_resets >= self.max_lock_resets:
+                    self.force_lock()
+
+    def force_lock(self):
+        for block in self.blocks:
+            y, x = int(block.pos.y), int(block.pos.x)
+            if y >= 0:
+                self.field_data[y][x] = block
+        game_over = any(block.pos.y < 0 for block in self.blocks)
+        self.create_new_tetromino(game_over=game_over)
 
 class Block(pygame.sprite.Sprite):
 
