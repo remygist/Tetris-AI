@@ -68,7 +68,6 @@ class Main:
         self.ai_bag = BagGenerator()
         self.ai_next_shapes = [self.ai_bag.get_next() for _ in range(3)]
 
-
         # Positions
         player_gamefield_pos = (PADDING + SIDEBAR_WIDTH + PADDING, PADDING)
         player_sidebar_pos = (PADDING, PADDING)
@@ -76,9 +75,14 @@ class Main:
         ai_gamefield_pos = (player_gamefield_pos[0] + GAME_WIDTH + PADDING * 2, PADDING)
         ai_sidebar_pos = (ai_gamefield_pos[0] + GAME_WIDTH + PADDING, PADDING)
 
+        # init game
         self.player_game = Game(self.get_player_next_shape, self.update_player_score, topleft=player_gamefield_pos)
         self.ai_game = Game(self.get_ai_next_shape, self.update_ai_score, topleft=ai_gamefield_pos)
 
+        self.player_game.accept_input = True
+        self.ai_game.accept_input = False
+
+        # init preview
         self.player_preview = Preview(self.player_next_shapes, topleft=player_sidebar_pos)
         self.ai_preview = Preview(self.ai_next_shapes, topleft=ai_sidebar_pos)
 

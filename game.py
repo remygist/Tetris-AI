@@ -13,6 +13,7 @@ class Game:
         self.rect = self.surface.get_rect(topleft = topleft)
         self.sprites = pygame.sprite.Group()
         self.game_over = False
+        self.accept_input = True
 
         # game connection
         self.get_next_shape = get_next_shape
@@ -154,23 +155,24 @@ class Game:
     
     def run(self, events):
         # Process single-tap keys (rotation, hard drop)
-        for event in events:
-            self.input(event)
+        if self.accept_input:
+            for event in events:
+                self.input(event)
 
-        # Process held keys (left/right/down movement)
-        keys = pygame.key.get_pressed()
+            # Process held keys (left/right/down movement)
+            keys = pygame.key.get_pressed()
 
-        if not self.timers['horizontal move'].active:
-            if keys[pygame.K_LEFT]:
-                self.tetromino.move_horizontal(-1)
-                self.timers['horizontal move'].activate()
-            elif keys[pygame.K_RIGHT]:
-                self.tetromino.move_horizontal(1)
-                self.timers['horizontal move'].activate()
+            if not self.timers['horizontal move'].active:
+                if keys[pygame.K_LEFT]:
+                    self.tetromino.move_horizontal(-1)
+                    self.timers['horizontal move'].activate()
+                elif keys[pygame.K_RIGHT]:
+                    self.tetromino.move_horizontal(1)
+                    self.timers['horizontal move'].activate()
 
-        if keys[pygame.K_DOWN] and not self.timers['move down'].active:
-            self.tetromino.move_down()
-            self.timers['move down'].activate()
+            if keys[pygame.K_DOWN] and not self.timers['move down'].active:
+                self.tetromino.move_down()
+                self.timers['move down'].activate()
 
         self.timer_update()
         self.sprites.update()

@@ -25,9 +25,6 @@ class Score:
 
     def run(self):
         self.surface.fill(GRAY)
-        print('window height', WINDOW_HEIGHT)
-        print('window widht', WINDOW_WIDTH)
-        print('score run called', self.rect.topleft)
         for i, text in enumerate([('Score', self.score), ('Level',self.level), ('Lines', self.lines)]):
             x = self.surface.get_width() / 2
             y = self.increment_height / 2 + i * self.increment_height
