@@ -1,18 +1,14 @@
 from settings import *
-from ai_controller import get_lowest_valid_y, get_valid_actions
+from ai_controller import get_lowest_valid_y, get_valid_actions, evaluate_board, pick_best_action
 
-# Step 1: Create an empty board
+# Start with an empty board
 board = [[0 for _ in range(COLUMNS)] for _ in range(ROWS)]
 
-# Step 2: Optionally simulate a filled block
-for y in range(ROWS):  # rows 16 to 19 (bottom)
-    board[y][1] = 1  # left pillar
-    board[y][4] = 1  # right pillar
+# Add blocks manually to simulate a situation
+for y in range(16, 20):
+    board[y][1] = 1
+    board[y][3] = 1
 
-# Step 3: Call get_valid_actions
-piece_type = 'T'
-actions = get_valid_actions(piece_type, board)
-
-print(f"\nValid actions for '{piece_type}':")
-for rot_idx, x in actions:
-    print(f" - Rotation {rot_idx}, X = {x}")
+# Ask AI to choose best placement for 'O'
+action = pick_best_action('O', board)
+print(f"Best action for 'O': Rotation {action[0]}, X = {action[1]}")
