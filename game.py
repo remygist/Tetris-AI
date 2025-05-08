@@ -2,6 +2,7 @@ from settings import *
 from random import choice
 from sys import exit
 from timer import Timer
+from ai_controller import get_lowest_valid_y, get_valid_actions, evaluate_board, pick_best_action
 
 class Game: 
     
@@ -189,6 +190,27 @@ class Game:
         self.display_surface.blit(self.surface, self.rect.topleft)
         pygame.draw.rect(self.display_surface, LINE_COLOR, self.rect, 2, 2)
 
+    def apply_action(self, piece_type, rotation_index, x_pos):
+        rotation = TETROMINOS[piece_type]['rotations'][rotation_index]
+        y = get_lowest_valid_y(rotation, x_pos, self.field_data)
+
+        if y is None:
+            return
+        
+        for block in self.tetromino.blocks:
+            block.kill()
+        
+        for dx, dy in rotation:
+            px = x_pos + dx
+            py = y + dy
+            if 0 <= px < COLUMNS and 0 <= py < ROWS:
+                block = Block(self.sprites, (0, 0), TETROMINOS[piece_type]['color'])
+                block.pos = pygame.Vector2(px, py)
+                block.update() 
+                self.field_data[py][px] = block
+
+        self.create_new_tetromino()
+        
 class Tetromino:
 
     def __init__(self, shape, group, create_new_tetromino, field_data):
