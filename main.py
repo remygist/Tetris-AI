@@ -23,33 +23,72 @@ class Main:
         pygame.display.set_caption('Tetris')
         self.input_blocked_until = 0
 
-        # shapes
-        self.bag = BagGenerator()
-        self.next_shapes = [self.bag.get_next() for shape in range(3)]
+        # random bags
+        self.player_bag = BagGenerator()
+        self.ai_bag = BagGenerator()
 
-        # components
-        self.game = Game(self.get_next_shape, self.update_score)
-        self.score = Score()
-        self.preview = Preview(self.next_shapes)
+        # shapes queues
+        self.player_next_shapes = [self.player_bag.get_next() for shape in range(3)]
+        self.ai_next_shapes = [self.player_bag.get_next() for shape in range(3)]
+
+        # components (left player, right AI)
+        self.player_game = Game(self.get_player_next_shape, self.update_player_score)
+        self.ai_game = Game(self.get_ai_next_shape, self.update_ai_score)
+
+        self.player_preview = Preview(self.player_next_shapes, topleft=(PADDING, PADDING))
+        self.ai_preview = Preview(self.ai_next_shapes, topleft=(WINDOW_WIDTH//2 + PADDING, PADDING))
+
         self.state = 'start'
 
-    def update_score(self, lines, score, level):
-        self.score.lines = lines
-        self.score.score = score
-        self.score.level = level
+    def update_player_score(self, lines, score, level):
+        self.player_score.lines = lines
+        self.player_score.score = score
+        self.player_score.level = level
+    
+    def update_ai_score(self, lines, score, level):
+        self.ai_score.lines = lines
+        self.ai_score.score = score
+        self.ai_score.level = level
 
-    def get_next_shape(self):
-        next_shape = self.next_shapes.pop(0)
-        self.next_shapes.append(self.bag.get_next())
+    def get_player_next_shape(self):
+        next_shape = self.player_next_shapes.pop(0)
+        self.player_next_shapes.append(self.player_bag.get_next())
+        return next_shape
+    
+    def get_ai_next_shape(self):
+        next_shape = self.ai_next_shapes.pop(0)
+        self.ai_next_shapes.append(self.ai_bag.get_next())
         return next_shape
 
     def reset_game(self):
-        self.bag = BagGenerator()
-        self.next_shapes = [self.bag.get_next() for _ in range(3)]
-        self.score = Score()
-        self.game = Game(self.get_next_shape, self.update_score)
-        self.preview = Preview(self.next_shapes)
+        # init bags
+        self.player_bag = BagGenerator()
+        self.player_next_shapes = [self.player_bag.get_next() for _ in range(3)]
 
+        self.ai_bag = BagGenerator()
+        self.ai_next_shapes = [self.ai_bag.get_next() for _ in range(3)]
+
+        # Positions
+        player_gamefield_pos = (PADDING + SIDEBAR_WIDTH + PADDING, PADDING)
+        player_sidebar_pos = (PADDING, PADDING)
+
+        ai_gamefield_pos = (player_gamefield_pos[0] + GAME_WIDTH + PADDING * 2, PADDING)
+        ai_sidebar_pos = (ai_gamefield_pos[0] + GAME_WIDTH + PADDING, PADDING)
+
+        # init game
+        self.player_game = Game(self.get_player_next_shape, self.update_player_score, topleft=player_gamefield_pos)
+        self.ai_game = Game(self.get_ai_next_shape, self.update_ai_score, topleft=ai_gamefield_pos)
+
+        self.player_game.accept_input = True
+        self.ai_game.accept_input = False
+
+        # init preview
+        self.player_preview = Preview(self.player_next_shapes, topleft=player_sidebar_pos)
+        self.ai_preview = Preview(self.ai_next_shapes, topleft=ai_sidebar_pos)
+
+        # init score
+        self.player_score = Score(topleft=(PADDING, GAME_HEIGHT * PREVIEW_HEIGHT_FRACTION + PADDING * 2))  # below preview
+        self.ai_score = Score(topleft=(ai_sidebar_pos[0], GAME_HEIGHT * PREVIEW_HEIGHT_FRACTION + PADDING * 2))
 
     def run(self):
         while True:
@@ -72,23 +111,29 @@ class Main:
 
             if self.state == 'start':
                 draw_start_screen(self.display_surface)
+            
             elif self.state == 'playing':
+                # block input for 200ms after start
                 if pygame.time.get_ticks() < self.input_blocked_until:
-                    self.game.run([])  
+                    self.player_game.run([])  # ignore input
                 else:
-                    self.game.run(events)
-                self.score.run()
-                self.preview.run()
+                    self.player_game.run(events)
+                
+                self.ai_game.run([]) # ignore ai input
 
-                if self.game.game_over:
+                self.player_score.run()
+                self.ai_score.run()
+
+                self.player_preview.run()
+                self.ai_preview.run()
+
+                if self.player_game.game_over or self.ai_game.game_over:
                     self.state = 'game_over'
             elif self.state == 'game_over':
-                draw_game_over_screen(self.display_surface, self.score.score)
+                draw_game_over_screen(self.display_surface, self.player_score.score)
 
             pygame.display.update()
             self.clock.tick()
-
-
 
 if __name__ == '__main__':
     main = Main()

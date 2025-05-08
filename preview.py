@@ -1,11 +1,11 @@
 from settings import *
 
 class Preview:
-    def __init__(self, next_shapes):
+    def __init__(self, next_shapes, topleft=(PADDING, PADDING)):
 
         # general
         self.surface = pygame.Surface((SIDEBAR_WIDTH, GAME_HEIGHT * PREVIEW_HEIGHT_FRACTION))
-        self.rect = self.surface.get_rect(topright = (WINDOW_WIDTH - PADDING, PADDING))
+        self.rect = self.surface.get_rect(topleft = topleft)
         self.display_surface = pygame.display.get_surface()
 
         # shapes
