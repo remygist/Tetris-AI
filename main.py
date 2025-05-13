@@ -9,6 +9,7 @@ from preview import Preview
 from interface.start_screen import draw_start_screen
 from interface.game_over_screen import draw_game_over_screen
 from bag_generator import BagGenerator
+from ai_controller import get_lowest_valid_y, get_valid_actions, evaluate_board, pick_best_action
 
 
 from random import choice
@@ -22,6 +23,10 @@ class Main:
         self.clock = pygame.time.Clock()
         pygame.display.set_caption('Tetris')
         self.input_blocked_until = 0
+
+        # ai delay
+        self.ai_move_delay = 1000  
+        self.last_ai_move_time = 0
 
         # random bags
         self.player_bag = BagGenerator()
@@ -119,7 +124,19 @@ class Main:
                 else:
                     self.player_game.run(events)
                 
-                self.ai_game.run([]) # ignore ai input
+                self.ai_game.run([])
+                current_time = pygame.time.get_ticks()
+
+                if not self.ai_game.game_over and current_time - self.last_ai_move_time > self.ai_move_delay:
+                    piece_type = self.ai_game.tetromino.shape
+                    board = [[1 if cell else 0 for cell in row] for row in self.ai_game.field_data]
+
+                    action = pick_best_action(piece_type, board)
+                    if action:
+                        rot_idx, x_pos = action
+                        self.ai_game.apply_action(piece_type, rot_idx, x_pos)
+                        self.last_ai_move_time = current_time  # 🕐 update last move time
+
 
                 self.player_score.run()
                 self.ai_score.run()
