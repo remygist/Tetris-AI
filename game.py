@@ -15,6 +15,8 @@ class Game:
         self.sprites = pygame.sprite.Group()
         self.game_over = False
         self.accept_input = True
+        self.lines_cleared_this_turn = 0
+
 
         # game connection
         self.get_next_shape = get_next_shape
@@ -153,6 +155,7 @@ class Game:
 
             # update score
             self.calculate_score(len(delete_rows))
+            self.lines_cleared_this_turn = len(delete_rows)
     
     def run(self, events):
         # Process single-tap keys (rotation, hard drop)
@@ -191,6 +194,7 @@ class Game:
         pygame.draw.rect(self.display_surface, LINE_COLOR, self.rect, 2, 2)
 
     def apply_action(self, piece_type, rotation_index, x_pos):
+        self.lines_cleared_this_turn = 0
         rotation = TETROMINOS[piece_type]['rotations'][rotation_index]
         y = get_lowest_valid_y(rotation, x_pos, self.field_data)
 
