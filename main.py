@@ -1,5 +1,6 @@
 from settings import *
 from sys import exit
+import os
 
 # components
 from game import Game
@@ -32,11 +33,17 @@ class Main:
         self.batch_size = 32
 
         self.lines_cleared_this_turn = 0
+        self.games_played = 0
 
         self.policy_net = DQN(self.state_size, self.action_size)
         self.target_net = DQN(self.state_size, self.action_size)
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
+
+        if os.path.exists("models/dqn_model.pth"):
+            print("loadinf saved model")
+            self.policy_net.load_state_dict(torch.load("models/dqn_model.pth"))
+            self.target_net.load_state_dict(self.policy_net.state_dict())
 
         self.optimizer = torch.optim.Adam(self.policy_net.parameters(), lr=0.001)
         self.replay_memory = ReplayMemory(capacity=10000)
@@ -212,6 +219,11 @@ class Main:
                 # if self.player_game.game_over or self.ai_game.game_over:
                 if self.ai_game.game_over: # remove player condition for training
                     self.state = 'game_over'
+                    self.games_played += 1
+                    if self.games_played % 10 == 0:
+                        print(f"Saving model at game {self.games_played}")
+                        torch.save(self.policy_net.state_dict(), "models/dqn_model.pth")
+
             elif self.state == 'game_over':
                 self.reset_game()
                 self.state = 'playing'
