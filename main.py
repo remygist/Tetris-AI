@@ -1,6 +1,7 @@
 from settings import *
 from sys import exit
 import os
+import random
 
 # components
 from game import Game
@@ -13,9 +14,6 @@ from ai_controller import get_lowest_valid_y, get_valid_actions, evaluate_board,
 from models.dqn_model import DQN
 from replay_memory import ReplayMemory
 from train_utils import train_step
-
-
-from random import choice
 
 class Main:
     def __init__(self):
@@ -47,6 +45,13 @@ class Main:
 
         self.optimizer = torch.optim.Adam(self.policy_net.parameters(), lr=0.001)
         self.replay_memory = ReplayMemory(capacity=10000)
+
+        # epsilon decay
+        self.epsilon = 1.0
+        self.epsilon_min = 0.05
+        self.epsilon_decay = 0.9995  # decay per step
+        self.step_count = 0
+        self.target_update_freq = 1000
 
         # ai delay
         self.ai_move_delay = 10
@@ -175,7 +180,17 @@ class Main:
 
                     if valid_indices:
                         # pick action with the highest Q-value
-                        action_index = max(valid_indices, key=lambda i: q_values[0][i])
+                        self.step_count += 1
+                        self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+
+                        if self.step_count % self.target_update_freq == 0:
+                            self.target_net.load_state_dict(self.policy_net.state_dict())
+                            print(f"[Update] Synced target network at step {self.step_count}")
+
+                        if random.random() < self.epsilon: 
+                            action_index = random.choice(valid_indices) # learn on random action
+                        else:
+                            action_index = max(valid_indices, key=lambda i: q_values[0][i]) # learn on best action
 
                         # decode action to (rotation, x)
                         rot_idx = action_index // 10
@@ -205,9 +220,10 @@ class Main:
                         self.replay_memory.push(state.squeeze(), action_index, reward, next_state, done)
 
                         # train
-                        loss = train_step(self.policy_net, self.target_net, self.replay_memory, self.optimizer, batch_size=self.batch_size)
-                        if loss is not None:
-                            print(f"[Step] Loss: {loss:.4f}")
+                        for _ in range(4):
+                            loss = train_step(self.policy_net, self.target_net, self.replay_memory, self.optimizer, batch_size=self.batch_size)
+                            if loss is not None:
+                                print(f"[Step] Loss: {loss:.4f}")
                         self.last_ai_move_time = current_time
 
                 self.player_score.run()
