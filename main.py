@@ -25,7 +25,7 @@ class Main:
         self.input_blocked_until = 0
 
         # ai delay
-        self.ai_move_delay = 1000  
+        self.ai_move_delay = 10
         self.last_ai_move_time = 0
 
         # random bags
@@ -131,7 +131,9 @@ class Main:
                     piece_type = self.ai_game.tetromino.shape
                     board = [[1 if cell else 0 for cell in row] for row in self.ai_game.field_data]
 
-                    action = pick_best_action(piece_type, board)
+                    weights = self.ai_game.ai_weights
+                    action = pick_best_action(piece_type, board, weights)
+
                     if action:
                         rot_idx, x_pos = action
                         self.ai_game.apply_action(piece_type, rot_idx, x_pos)
@@ -154,4 +156,11 @@ class Main:
 
 if __name__ == '__main__':
     main = Main()
+
+    from ga import run_ga
+    best_weights = run_ga(main)
+
+    print(f"\n🎯 Final best weights: {best_weights}")
+    
+    main.ai_game.set_ai_weights(best_weights)
     main.run()
