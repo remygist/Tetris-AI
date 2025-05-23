@@ -2,6 +2,7 @@ import random
 from ai_controller import pick_best_action
 import json
 import matplotlib.pyplot as plt 
+import time
 
 
 # genetic algorithm config
@@ -15,6 +16,7 @@ WEIGHT_MIN = -10
 WEIGHT_MAX = 10
 
 fitness_history = []
+run_id = int(time.time())
 
 def generate_individual():
     return [random.uniform(WEIGHT_MIN, WEIGHT_MAX) for _ in range(GENE_LENGTH)]
@@ -76,17 +78,18 @@ def run_ga(main_class):
             new_population.append(child)
 
         population = new_population
-    plot_curve()
+    plot_curve(run_id)
     final_fitnesses = [evaluate_individual(main_class, ind) for ind in population]
     best = population[final_fitnesses.index(max(final_fitnesses))]
 
     
-    with open("best_weights.json", "w") as f:
+    filename = f"saved_weights/best_weights_{run_id}.json"
+    with open(filename, "w") as f:
         json.dump(best, f)
     print(f"\n🎯 Final best weights: {best}")
     return best
 
-def plot_curve():
+def plot_curve(run_id):
     plt.figure()
     plt.plot(range(1, NUM_GENERATIONS + 1), fitness_history)
     plt.xlabel("Generation")
@@ -94,6 +97,6 @@ def plot_curve():
     plt.title("GA progress")
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig("assets/fitness_history.png")   
+    plt.savefig(f"fitness_history/fitness_history_{run_id}.png")
     plt.show()                           
     print("📈  Fitness plot saved as fitness_history.png")
