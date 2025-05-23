@@ -7,16 +7,14 @@ import time
 
 # genetic algorithm config
 POPULATION_SIZE = 30
-NUM_GENERATIONS = 100
+NUM_GENERATIONS = 30
 MUTATION_RATE = 0.2
 TOURNAMENT_SIZE = 5
 ELITE_COUNT = 3
-GENE_LENGTH = 4
+GENE_LENGTH = 8
 WEIGHT_MIN = -10
 WEIGHT_MAX = 10
 
-fitness_history = []
-run_id = int(time.time())
 
 def generate_individual():
     return [random.uniform(WEIGHT_MIN, WEIGHT_MAX) for _ in range(GENE_LENGTH)]
@@ -41,7 +39,7 @@ def evaluate_individual(main_class, weights):
     main_class.reset_game()
     main_class.ai_game.set_ai_weights(weights)
 
-    max_steps = 500  # stop the test early for speed
+    max_steps = 1000 # stop the test early for speed
     steps = 0
 
     while not main_class.ai_game.game_over and steps < max_steps:
@@ -53,9 +51,11 @@ def evaluate_individual(main_class, weights):
             main_class.ai_game.apply_action(piece_type, rot_idx, x_pos)
         steps += 1
 
-    return main_class.ai_score.lines  
+    return main_class.ai_score.lines + 0.1 * steps
 
 def run_ga(main_class):
+    fitness_history = []
+    run_id = int(time.time())
     population = [generate_individual() for _ in range(POPULATION_SIZE)]
 
     for generation in range(NUM_GENERATIONS):
@@ -78,7 +78,7 @@ def run_ga(main_class):
             new_population.append(child)
 
         population = new_population
-    plot_curve(run_id)
+    plot_curve(run_id, fitness_history)
     final_fitnesses = [evaluate_individual(main_class, ind) for ind in population]
     best = population[final_fitnesses.index(max(final_fitnesses))]
 
@@ -89,7 +89,7 @@ def run_ga(main_class):
     print(f"\n🎯 Final best weights: {best}")
     return best
 
-def plot_curve(run_id):
+def plot_curve(run_id, fitness_history):
     plt.figure()
     plt.plot(range(1, NUM_GENERATIONS + 1), fitness_history)
     plt.xlabel("Generation")
@@ -97,6 +97,5 @@ def plot_curve(run_id):
     plt.title("GA progress")
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(f"fitness_history/fitness_history_{run_id}.png")
-    plt.show()                           
+    plt.savefig(f"fitness_history/fitness_history_{run_id}.png")                          
     print("📈  Fitness plot saved as fitness_history.png")

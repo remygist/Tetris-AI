@@ -164,8 +164,8 @@ if __name__ == '__main__':
             best_weights = json.load(f)
         print(f"🎯 Loaded best weights from file: {best_weights}")
     else:
-        from ga import run_ga
-        best_weights = run_ga(main)
+        for i in range(10):
+            best_weights = run_ga(main)
 
     
     main.ai_game.set_ai_weights(best_weights)
