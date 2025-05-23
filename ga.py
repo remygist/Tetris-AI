@@ -1,16 +1,20 @@
 import random
 from ai_controller import pick_best_action
-from copy import deepcopy
+import json
+import matplotlib.pyplot as plt 
+
 
 # genetic algorithm config
 POPULATION_SIZE = 30
-NUM_GENERATIONS = 200
+NUM_GENERATIONS = 100
 MUTATION_RATE = 0.2
 TOURNAMENT_SIZE = 5
 ELITE_COUNT = 3
 GENE_LENGTH = 4
 WEIGHT_MIN = -10
 WEIGHT_MAX = 10
+
+fitness_history = []
 
 def generate_individual():
     return [random.uniform(WEIGHT_MIN, WEIGHT_MAX) for _ in range(GENE_LENGTH)]
@@ -57,6 +61,7 @@ def run_ga(main_class):
         fitnesses = [evaluate_individual(main_class, ind) for ind in population]
 
         best_fitness = max(fitnesses)
+        fitness_history.append(best_fitness)
         best_individual = population[fitnesses.index(best_fitness)]
         print(f"Best fitness: {best_fitness:.2f}, weights: {best_individual}")
 
@@ -71,8 +76,24 @@ def run_ga(main_class):
             new_population.append(child)
 
         population = new_population
-
+    plot_curve()
     final_fitnesses = [evaluate_individual(main_class, ind) for ind in population]
     best = population[final_fitnesses.index(max(final_fitnesses))]
+
+    
+    with open("best_weights.json", "w") as f:
+        json.dump(best, f)
     print(f"\n🎯 Final best weights: {best}")
     return best
+
+def plot_curve():
+    plt.figure()
+    plt.plot(range(1, NUM_GENERATIONS + 1), fitness_history)
+    plt.xlabel("Generation")
+    plt.ylabel("Best fitness (lines cleared)")
+    plt.title("GA progress")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig("assets/fitness_history.png")   
+    plt.show()                           
+    print("📈  Fitness plot saved as fitness_history.png")

@@ -1,6 +1,7 @@
 from settings import *
 from sys import exit
-
+import os
+import json
 
 # components
 from game import Game
@@ -10,7 +11,7 @@ from interface.start_screen import draw_start_screen
 from interface.game_over_screen import draw_game_over_screen
 from bag_generator import BagGenerator
 from ai_controller import get_lowest_valid_y, get_valid_actions, evaluate_board, pick_best_action
-
+from ga import run_ga
 
 from random import choice
 
@@ -157,10 +158,15 @@ class Main:
 if __name__ == '__main__':
     main = Main()
 
-    from ga import run_ga
-    best_weights = run_ga(main)
+    
+    if os.path.exists("best_weights.json"):
+        with open("best_weights.json", "r") as f:
+            best_weights = json.load(f)
+        print(f"🎯 Loaded best weights from file: {best_weights}")
+    else:
+        from ga import run_ga
+        best_weights = run_ga(main)
 
-    print(f"\n🎯 Final best weights: {best_weights}")
     
     main.ai_game.set_ai_weights(best_weights)
     main.run()
