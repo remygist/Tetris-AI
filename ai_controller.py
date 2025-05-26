@@ -42,7 +42,7 @@ def get_lowest_valid_y(rotation, x_position, board):
 
     return None 
 
-def evaluate_board(board):
+def evaluate_board(board, weights):
     ROWS = len(board)
     COLUMNS = len(board[0])
 
@@ -55,14 +55,12 @@ def evaluate_board(board):
     for x in range(COLUMNS):
         block_found = False
         for y in range(ROWS):
-            if board[y][x] != 0: # check if filled
+            if board[y][x] != 0:
                 if not block_found:
-                    heights[x] = ROWS - y  
-                    block_found = True # highest block found
-                else:
-                    continue  # already counted height
+                    heights[x] = ROWS - y
+                    block_found = True
             elif block_found:
-                holes += 1  # space below a filled block
+                holes += 1
 
     # bumpiness
     for x in range(COLUMNS - 1):
@@ -73,20 +71,58 @@ def evaluate_board(board):
         if all(cell != 0 for cell in row):
             lines_cleared += 1
 
-    total_height = sum(heights)
+    # max column height
+    max_height = max(heights)
 
-    # final weighted score
+    # wells
+    wells = 0
+    for x in range(1, COLUMNS - 1):
+        if heights[x] < heights[x - 1] and heights[x] < heights[x + 1]:
+            wells += (heights[x - 1] - heights[x]) + (heights[x + 1] - heights[x])
+
+    # row transitions
+    row_transitions = 0
+    for row in board:
+        prev = 1  # wall on left
+        for cell in row:
+            if cell != prev:
+                row_transitions += 1
+            prev = cell
+        if prev == 0:
+            row_transitions += 1  # right wall
+
+    # column transitions
+    col_transitions = 0
+    for x in range(COLUMNS):
+        prev = 1  # floor
+        for y in range(ROWS):
+            cell = board[y][x]
+            if cell != prev:
+                col_transitions += 1
+            prev = cell
+
+    # final weighted score using all 8 features
     score = (
-        -5.0 * holes +
-         3.0 * lines_cleared +
-        -0.5 * bumpiness +
-        -0.1 * total_height
+        weights[0] * holes +
+        weights[1] * lines_cleared +
+        weights[2] * bumpiness +
+        weights[3] * sum(heights) +       # total_height
+        weights[4] * max_height +
+        weights[5] * wells +
+        weights[6] * row_transitions +
+        weights[7] * col_transitions
     )
 
     return score
 
-def pick_best_action(piece_type, board):
-    best_score = float('-inf') # negative infinite so every score is better
+
+
+def pick_best_action(piece_type, board, weights=None):
+    if weights is None:
+        # Fallback to default weights
+        weights = [-5.0, 3.0, -0.5, -0.1]
+
+    best_score = float('-inf')
     best_action = None
 
     for rotation_index, x_pos in get_valid_actions(piece_type, board):
@@ -96,19 +132,17 @@ def pick_best_action(piece_type, board):
         if y is None:
             continue
 
-        # copy board
         temp_board = [row[:] for row in board]
-
-        # apply pieces in temp board
         for dx, dy in rotation:
             px = x_pos + dx
             py = y + dy
             if 0 <= px < COLUMNS and 0 <= py < ROWS:
                 temp_board[py][px] = 1
-        
-        score = evaluate_board(temp_board)
+
+        score = evaluate_board(temp_board, weights)
         if score > best_score:
             best_score = score
             best_action = (rotation_index, x_pos)
-        
+
     return best_action
+

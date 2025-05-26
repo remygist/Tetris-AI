@@ -20,6 +20,9 @@ class Game:
         self.get_next_shape = get_next_shape
         self.update_score = update_score
 
+        # genetic algorithm
+        self.ai_weights = None
+
         # lines
         self.line_surface = self.surface.copy()
         self.line_surface.fill((0,255,0))
@@ -210,6 +213,10 @@ class Game:
                 self.field_data[py][px] = block
 
         self.create_new_tetromino()
+
+    def set_ai_weights(self, weights):
+        self.ai_weights = weights
+
         
 class Tetromino:
 
