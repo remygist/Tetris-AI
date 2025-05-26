@@ -1,17 +1,33 @@
 import torch
 import torch.nn as nn
+import json
+import os
 
 class DQN(nn.Module):
-    def __init__(self, state_size=207, action_size=40):
-        super().__init__()
-
+    def __init__(self, input_dim=8, hidden_dim1=128, hidden_dim2=64, output_dim=1):
+        super(DQN, self).__init__()
         self.model = nn.Sequential(
-            nn.Linear(state_size, 128), # input layer
+            nn.Linear(input_dim, hidden_dim1),
             nn.ReLU(),
-            nn.Linear(128,64), # hidden 
+            nn.Linear(hidden_dim1, hidden_dim2),
             nn.ReLU(),
-            nn.Linear(64, action_size) # output layer
+            nn.Linear(hidden_dim2, output_dim)
         )
 
     def forward(self, state):
         return self.model(state)
+
+def load_agent(agent_type, model_path=None):
+    if model_path is None:
+        raise ValueError("Must provide model_path for agent type: " + agent_type)
+    ext = os.path.splitext(model_path)[1].lower()
+    if ext == ".pt":
+        model = DQN()
+        model.load_state_dict(torch.load(model_path))
+        model.eval()
+        return model
+    elif ext == ".json":
+        with open(model_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    else:
+        raise ValueError(f"Unsupported file extension '{ext}'. Must be .pt or .json")
