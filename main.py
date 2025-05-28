@@ -11,14 +11,9 @@ from preview import Preview
 from interface.start_screen import draw_start_screen
 from interface.game_over_screen import draw_game_over_screen
 from bag_generator import BagGenerator
-from ai_controller import get_lowest_valid_y, get_valid_actions, evaluate_board, pick_best_action, extract_features
+from ai_controller import get_lowest_valid_y, get_valid_actions, extract_features
 from ga import run_ga
-from models.dqn_model import load_agent
-
-from random import choice
-
-AGENT_TYPE = "dqn"  # Options: "dqn", "ga"
-MODEL_PATH = "models/dqn_ep50.pt"  # "saved_weights/best_weights_1748039070.json" or "models/dqn_ep500.pt"
+from models.dqn_model import set_agent_model
 
 class Main:
     def __init__(self):
@@ -30,11 +25,8 @@ class Main:
         self.input_blocked_until = 0
 
         # ai delay
-        self.ai_move_delay = 10
+        self.ai_move_delay = 1
         self.last_ai_move_time = 0
-
-        # agent
-        self.agent = load_agent(AGENT_TYPE, MODEL_PATH)
 
         # random bags
         self.player_bag = BagGenerator()
@@ -43,6 +35,10 @@ class Main:
         # shapes queues
         self.player_next_shapes = [self.player_bag.get_next() for _ in range(3)]
         self.ai_next_shapes = [self.ai_bag.get_next() for _ in range(3)]
+
+        # difficulty
+        self.difficulty = None
+        self.agent = None
 
         # components (left player, right AI)
         self.player_game = Game(self.get_player_next_shape, self.update_player_score)
@@ -107,9 +103,19 @@ class Main:
                     pygame.quit()
                     exit()
                 if self.state == 'start' and event.type == pygame.KEYDOWN:
-                    self.reset_game()
-                    self.state = 'playing'
-                    self.input_blocked_until = pygame.time.get_ticks() + 200
+                    if event.key in [pygame.K_1, pygame.K_KP1]:
+                        self.difficulty = "easy"
+                    elif event.key in [pygame.K_2, pygame.K_KP2]:
+                        self.difficulty = "medium"
+                    elif event.key in [pygame.K_3, pygame.K_KP3]:
+                        self.difficulty = "hard"
+
+                    if self.difficulty:
+                        self.agent = set_agent_model(self.difficulty)
+                        self.reset_game()
+                        self.state = 'playing'
+                        self.input_blocked_until = pygame.time.get_ticks() + 200
+
                 if self.state == 'game_over' and event.type == pygame.KEYDOWN:
                     self.reset_game()
                     self.state = 'playing'
@@ -133,32 +139,25 @@ class Main:
                     piece_type = self.ai_game.tetromino.shape
                     board = [[1 if cell else 0 for cell in row] for row in self.ai_game.field_data]
 
-                    if AGENT_TYPE == "dqn":
-                        best_q = float('-inf')
-                        best_action = None
-                        for rot_idx, x_pos in get_valid_actions(piece_type, board):
-                            rotation = TETROMINOS[piece_type]['rotations'][rot_idx]
-                            y = get_lowest_valid_y(rotation, x_pos, board)
-                            if y is None:
-                                continue
-                            temp_board = [row[:] for row in board]
-                            for dx, dy in rotation:
-                                px, py = x_pos + dx, y + dy
-                                if 0 <= px < COLUMNS and 0 <= py < ROWS:
-                                    temp_board[py][px] = 1
-                            features = extract_features(temp_board)
-                            with torch.no_grad():
-                                q = self.agent(features.unsqueeze(0)).item()
-                            if q > best_q:
-                                best_q = q
-                                best_action = (rot_idx, x_pos)
+                    best_q = float('-inf')
+                    best_action = None
+                    for rot_idx, x_pos in get_valid_actions(piece_type, board):
+                        rotation = TETROMINOS[piece_type]['rotations'][rot_idx]
+                        y = get_lowest_valid_y(rotation, x_pos, board)
+                        if y is None:
+                            continue
+                        temp_board = [row[:] for row in board]
+                        for dx, dy in rotation:
+                            px, py = x_pos + dx, y + dy
+                            if 0 <= px < COLUMNS and 0 <= py < ROWS:
+                                temp_board[py][px] = 1
+                        features = extract_features(temp_board)
+                        with torch.no_grad():
+                            q = self.agent(features.unsqueeze(0)).item()
+                        if q > best_q:
+                            best_q = q
+                            best_action = (rot_idx, x_pos)
                         action = best_action
-
-                    elif AGENT_TYPE == "ga":
-                        action = pick_best_action(piece_type, board, self.agent)
-
-                    elif AGENT_TYPE == "heuristic":
-                        action = pick_best_action(piece_type, board)
 
                     if action:
                         rot_idx, x_pos = action

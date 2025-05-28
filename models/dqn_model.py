@@ -31,3 +31,17 @@ def load_agent(agent_type, model_path=None):
             return json.load(f)
     else:
         raise ValueError(f"Unsupported file extension '{ext}'. Must be .pt or .json")
+    
+def set_agent_model(difficulty):
+    if difficulty == "easy":
+        model_path = "models/easy/dqn_easy.pt"
+    elif difficulty == "medium":
+        model_path = "models/dqn_medium.pt"
+    elif difficulty == "hard":
+        model_path = "models/dqn_hard.pt"
+    else:
+        raise ValueError("Invalid difficulty")
+
+    return load_agent("dqn", model_path)
+
+
