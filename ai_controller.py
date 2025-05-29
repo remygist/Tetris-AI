@@ -1,4 +1,5 @@
 from settings import *
+import torch
 
 def get_valid_actions(piece_type, board):
     valid_actions = []
@@ -115,8 +116,6 @@ def evaluate_board(board, weights):
 
     return score
 
-
-
 def pick_best_action(piece_type, board, weights=None):
     if weights is None:
         # Fallback to default weights
@@ -145,4 +144,64 @@ def pick_best_action(piece_type, board, weights=None):
             best_action = (rotation_index, x_pos)
 
     return best_action
+
+def extract_features(board):
+    ROWS = len(board)
+    COLUMNS = len(board[0])
+
+    holes = 0
+    heights = [0 for _ in range(COLUMNS)]
+    bumpiness = 0
+    lines_cleared = 0
+
+    for x in range(COLUMNS):
+        block_found = False
+        for y in range(ROWS):
+            if board[y][x] != 0:
+                if not block_found:
+                    heights[x] = ROWS - y
+                    block_found = True
+            elif block_found:
+                holes += 1
+
+    for x in range(COLUMNS - 1):
+        bumpiness += abs(heights[x] - heights[x + 1])
+
+    max_height = max(heights)
+    total_height = sum(heights)
+
+    wells = 0
+    for x in range(1, COLUMNS - 1):
+        if heights[x] < heights[x - 1] and heights[x] < heights[x + 1]:
+            wells += (heights[x - 1] - heights[x]) + (heights[x + 1] - heights[x])
+
+    row_transitions = 0
+    for row in board:
+        prev = 1
+        for cell in row:
+            if cell != prev:
+                row_transitions += 1
+            prev = cell
+        if prev == 0:
+            row_transitions += 1
+
+    col_transitions = 0
+    for x in range(COLUMNS):
+        prev = 1
+        for y in range(ROWS):
+            cell = board[y][x]
+            if cell != prev:
+                col_transitions += 1
+            prev = cell
+
+    return torch.tensor([
+        holes,
+        lines_cleared,
+        bumpiness,
+        total_height,
+        max_height,
+        wells,
+        row_transitions,
+        col_transitions
+    ], dtype=torch.float32)
 
