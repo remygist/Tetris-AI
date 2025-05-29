@@ -5,14 +5,14 @@ import json
 import torch
 
 # components
-from game import Game
-from score import Score
-from preview import Preview
+from game.game import Game
+from interface.score import Score
+from interface.preview import Preview
 from interface.start_screen import draw_start_screen
 from interface.game_over_screen import draw_game_over_screen
-from bag_generator import BagGenerator
+from game.bag_generator import BagGenerator
 from ai_controller import get_lowest_valid_y, get_valid_actions, extract_features
-from ga import run_ga
+from ga.ga import run_ga
 from models.dqn_model import set_agent_model
 
 class Main:
