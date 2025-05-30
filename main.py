@@ -24,7 +24,7 @@ class Main:
         self.menu_buttons = []
 
         # ai delay
-        self.ai_move_delay = 10
+        self.ai_move_delay = 1000
         self.last_ai_move_time = 0
 
         # random bags
@@ -166,6 +166,13 @@ class Main:
                         chance = self.ai_game.current_level/15
                         if random.random() < chance and valid_actions:
                             action = random.choice(valid_actions)
+                    
+                    if self.difficulty == 'medium' and self.ai_game.current_level > 15:
+                        chance = self.ai_game.current_level/100
+                        print(chance)
+                        if random.random() < chance and valid_actions:
+                            action = random.choice(valid_actions)
+                            print("random placement !!!")
 
                     if action:
                         rot_idx, x_pos = action

@@ -86,11 +86,11 @@ def draw_difficulty_screen(main_instance, surface):
         main_instance.input_blocked_until = pygame.time.get_ticks() + 200
 
     def set_medium():
-        """main_instance.difficulty = 'medium'
+        main_instance.difficulty = 'medium'
         main_instance.agent = set_agent_model('medium')
         main_instance.reset_game()
         main_instance.state = 'playing'
-        main_instance.input_blocked_until = pygame.time.get_ticks() + 200"""
+        main_instance.input_blocked_until = pygame.time.get_ticks() + 200
         print("medium")
 
     def set_hard():
