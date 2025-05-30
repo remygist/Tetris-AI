@@ -1,8 +1,7 @@
 from settings import *
 from sys import exit
-import os
-import json
 import torch
+import random
 
 # components
 from game.game import Game
@@ -13,7 +12,6 @@ from interface.game_over_screen import draw_game_over_screen
 from game.bag_generator import BagGenerator
 from ai_controller import get_lowest_valid_y, get_valid_actions, extract_features
 from ga.ga import run_ga
-from models.dqn_model import set_agent_model
 
 class Main:
     def __init__(self):
@@ -26,7 +24,7 @@ class Main:
         self.menu_buttons = []
 
         # ai delay
-        self.ai_move_delay = 1
+        self.ai_move_delay = 10
         self.last_ai_move_time = 0
 
         # random bags
@@ -109,21 +107,6 @@ class Main:
                     for button in self.menu_buttons:
                         button.handle_event(event)
 
-                # === Handle key press in difficulty select ===
-                if self.state == 'difficulty_select' and event.type == pygame.KEYDOWN:
-                    if event.key in [pygame.K_1, pygame.K_KP1]:
-                        self.difficulty = "easy"
-                    elif event.key in [pygame.K_2, pygame.K_KP2]:
-                        self.difficulty = "medium"
-                    elif event.key in [pygame.K_3, pygame.K_KP3]:
-                        self.difficulty = "hard"
-
-                    if self.difficulty:
-                        self.agent = set_agent_model(self.difficulty)
-                        self.reset_game()
-                        self.state = 'playing'
-                        self.input_blocked_until = pygame.time.get_ticks() + 200
-
                 # === Restart on game over ===
                 if self.state == 'game_over' and event.type == pygame.KEYDOWN:
                     self.reset_game()
@@ -159,6 +142,8 @@ class Main:
 
                     best_q = float('-inf')
                     best_action = None
+                    valid_actions = get_valid_actions(piece_type, board)
+
                     for rot_idx, x_pos in get_valid_actions(piece_type, board):
                         rotation = TETROMINOS[piece_type]['rotations'][rot_idx]
                         y = get_lowest_valid_y(rotation, x_pos, board)
@@ -176,6 +161,11 @@ class Main:
                             best_q = q
                             best_action = (rot_idx, x_pos)
                     action = best_action
+
+                    if self.difficulty == 'easy' and self.ai_game.current_level > 5:
+                        chance = self.ai_game.current_level/15
+                        if random.random() < chance and valid_actions:
+                            action = random.choice(valid_actions)
 
                     if action:
                         rot_idx, x_pos = action
