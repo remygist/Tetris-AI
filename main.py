@@ -8,7 +8,7 @@ import torch
 from game.game import Game
 from interface.score import Score
 from interface.preview import Preview
-from interface.start_screen import draw_start_screen
+from interface.start_screen import draw_start_screen, draw_difficulty_screen
 from interface.game_over_screen import draw_game_over_screen
 from game.bag_generator import BagGenerator
 from ai_controller import get_lowest_valid_y, get_valid_actions, extract_features
@@ -23,6 +23,7 @@ class Main:
         self.clock = pygame.time.Clock()
         pygame.display.set_caption('Tetris')
         self.input_blocked_until = 0
+        self.menu_buttons = []
 
         # ai delay
         self.ai_move_delay = 1
@@ -47,7 +48,7 @@ class Main:
         self.player_preview = Preview(self.player_next_shapes, topleft=(PADDING, PADDING))
         self.ai_preview = Preview(self.ai_next_shapes, topleft=(WINDOW_WIDTH // 2 + PADDING, PADDING))
 
-        self.state = 'start'
+        self.state = 'main_menu'
 
     def update_player_score(self, lines, score, level):
         self.player_score.lines = lines
@@ -102,7 +103,14 @@ class Main:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     exit()
-                if self.state == 'start' and event.type == pygame.KEYDOWN:
+
+                # === Handle button clicks in menu ===
+                if self.state == 'main_menu':
+                    for button in self.menu_buttons:
+                        button.handle_event(event)
+
+                # === Handle key press in difficulty select ===
+                if self.state == 'difficulty_select' and event.type == pygame.KEYDOWN:
                     if event.key in [pygame.K_1, pygame.K_KP1]:
                         self.difficulty = "easy"
                     elif event.key in [pygame.K_2, pygame.K_KP2]:
@@ -116,15 +124,25 @@ class Main:
                         self.state = 'playing'
                         self.input_blocked_until = pygame.time.get_ticks() + 200
 
+                # === Restart on game over ===
                 if self.state == 'game_over' and event.type == pygame.KEYDOWN:
                     self.reset_game()
                     self.state = 'playing'
                     self.input_blocked_until = pygame.time.get_ticks() + 200
 
+            # === Drawing logic ===
             self.display_surface.fill(GRAY)
 
-            if self.state == 'start':
-                draw_start_screen(self.display_surface)
+            if self.state == 'main_menu':
+                self.menu_buttons = draw_start_screen(self, self.display_surface)
+
+            elif self.state == 'difficulty_select':
+                self.difficulty_buttons = draw_difficulty_screen(self, self.display_surface)
+
+                if pygame.time.get_ticks() > self.input_blocked_until:
+                    for event in events:
+                        for button in self.difficulty_buttons:
+                            button.handle_event(event)
 
             elif self.state == 'playing':
                 if pygame.time.get_ticks() < self.input_blocked_until:
@@ -157,7 +175,7 @@ class Main:
                         if q > best_q:
                             best_q = q
                             best_action = (rot_idx, x_pos)
-                        action = best_action
+                    action = best_action
 
                     if action:
                         rot_idx, x_pos = action
@@ -177,6 +195,8 @@ class Main:
 
             pygame.display.update()
             self.clock.tick()
+
+
 
 if __name__ == '__main__':
     main = Main()
