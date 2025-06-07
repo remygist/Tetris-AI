@@ -235,8 +235,11 @@ class Main:
                     self.state = 'game_over'
 
             elif self.state == 'game_over':
-                draw_game_over_screen(self.display_surface, self.player_score.score)
-
+                self.game_over_buttons = draw_game_over_screen(self, self.display_surface)
+                for event in events:
+                    for button in self.game_over_buttons:
+                        button.handle_event(event)
+                        
             pygame.display.update()
             self.clock.tick()
 
