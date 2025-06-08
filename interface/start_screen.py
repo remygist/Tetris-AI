@@ -94,11 +94,11 @@ def draw_difficulty_screen(main_instance, surface):
         print("medium")
 
     def set_hard():
-        """main_instance.difficulty = 'hard'
+        main_instance.difficulty = 'hard'
         main_instance.agent = set_agent_model('hard')
         main_instance.reset_game()
         main_instance.state = 'playing'
-        main_instance.input_blocked_until = pygame.time.get_ticks() + 200"""
+        main_instance.input_blocked_until = pygame.time.get_ticks() + 200
         print("hard")
 
     # Create difficulty buttons
