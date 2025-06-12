@@ -1,19 +1,17 @@
 from settings import *
 from sys import exit
-import os
-import json
 import torch
+import random
 
 # components
-from game import Game
-from score import Score
-from preview import Preview
-from interface.start_screen import draw_start_screen
+from game.game import Game
+from interface.score import Score
+from interface.preview import Preview
+from interface.start_screen import draw_start_screen, draw_difficulty_screen
 from interface.game_over_screen import draw_game_over_screen
-from bag_generator import BagGenerator
+from game.bag_generator import BagGenerator
 from ai_controller import get_lowest_valid_y, get_valid_actions, extract_features
-from ga import run_ga
-from models.dqn_model import set_agent_model
+from ga.ga import run_ga
 
 class Main:
     def __init__(self):
@@ -23,10 +21,13 @@ class Main:
         self.clock = pygame.time.Clock()
         pygame.display.set_caption('Tetris')
         self.input_blocked_until = 0
+        self.menu_buttons = []
 
         # ai delay
-        self.ai_move_delay = 1
+        self.ai_move_delay = 1000
         self.last_ai_move_time = 0
+        self.player_lost_time = None
+        self.min_ai_delay = 50  # milliseconds
 
         # random bags
         self.player_bag = BagGenerator()
@@ -47,7 +48,7 @@ class Main:
         self.player_preview = Preview(self.player_next_shapes, topleft=(PADDING, PADDING))
         self.ai_preview = Preview(self.ai_next_shapes, topleft=(WINDOW_WIDTH // 2 + PADDING, PADDING))
 
-        self.state = 'start'
+        self.state = 'main_menu'
 
     def update_player_score(self, lines, score, level):
         self.player_score.lines = lines
@@ -70,6 +71,7 @@ class Main:
         return next_shape
 
     def reset_game(self):
+        self.player_lost_time = None
         self.player_bag = BagGenerator()
         self.player_next_shapes = [self.player_bag.get_next() for _ in range(3)]
 
@@ -102,46 +104,55 @@ class Main:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     exit()
-                if self.state == 'start' and event.type == pygame.KEYDOWN:
-                    if event.key in [pygame.K_1, pygame.K_KP1]:
-                        self.difficulty = "easy"
-                    elif event.key in [pygame.K_2, pygame.K_KP2]:
-                        self.difficulty = "medium"
-                    elif event.key in [pygame.K_3, pygame.K_KP3]:
-                        self.difficulty = "hard"
 
-                    if self.difficulty:
-                        self.agent = set_agent_model(self.difficulty)
+            # buttons per screen
+            if self.state == 'main_menu':
+                for event in events:
+                    for button in self.menu_buttons:
+                        button.handle_event(event)
+
+            elif self.state == 'difficulty_select':
+                if pygame.time.get_ticks() > self.input_blocked_until:
+                    for event in events:
+                        for button in self.difficulty_buttons:
+                            button.handle_event(event)
+
+            elif self.state == 'game_over':
+                for event in events:
+                    if event.type == pygame.KEYDOWN:
                         self.reset_game()
                         self.state = 'playing'
                         self.input_blocked_until = pygame.time.get_ticks() + 200
 
-                if self.state == 'game_over' and event.type == pygame.KEYDOWN:
-                    self.reset_game()
-                    self.state = 'playing'
-                    self.input_blocked_until = pygame.time.get_ticks() + 200
-
+            # draw main and selection screen
             self.display_surface.fill(GRAY)
 
-            if self.state == 'start':
-                draw_start_screen(self.display_surface)
+            if self.state == 'main_menu':
+                self.menu_buttons = draw_start_screen(self, self.display_surface)
+
+            elif self.state == 'difficulty_select':
+                self.difficulty_buttons = draw_difficulty_screen(self, self.display_surface)
 
             elif self.state == 'playing':
+                # avoid instant placing after game start
                 if pygame.time.get_ticks() < self.input_blocked_until:
                     self.player_game.run([])
                 else:
                     self.player_game.run(events)
 
                 self.ai_game.run([])
-                current_time = pygame.time.get_ticks()
 
+                # ai 
+                current_time = pygame.time.get_ticks()
                 if not self.ai_game.game_over and current_time - self.last_ai_move_time > self.ai_move_delay:
                     piece_type = self.ai_game.tetromino.shape
                     board = [[1 if cell else 0 for cell in row] for row in self.ai_game.field_data]
+                    valid_actions = get_valid_actions(piece_type, board)
 
                     best_q = float('-inf')
                     best_action = None
-                    for rot_idx, x_pos in get_valid_actions(piece_type, board):
+
+                    for rot_idx, x_pos in valid_actions:
                         rotation = TETROMINOS[piece_type]['rotations'][rot_idx]
                         y = get_lowest_valid_y(rotation, x_pos, board)
                         if y is None:
@@ -157,26 +168,83 @@ class Main:
                         if q > best_q:
                             best_q = q
                             best_action = (rot_idx, x_pos)
-                        action = best_action
+                    action = best_action
+
+                    # difficulty tweaking
+                    if self.difficulty == 'easy' and self.ai_game.current_level > 5:
+                        chance = self.ai_game.current_level / 15
+                        if random.random() < chance and valid_actions:
+                            action = random.choice(valid_actions)
+
+                    elif self.difficulty == 'medium' and self.ai_game.current_level > 15:
+                        chance = self.ai_game.current_level / 100
+                        if random.random() < chance and valid_actions:
+                            action = random.choice(valid_actions)
 
                     if action:
                         rot_idx, x_pos = action
                         self.ai_game.apply_action(piece_type, rot_idx, x_pos)
                         self.last_ai_move_time = current_time
 
+                # draw UI 
                 self.player_score.run()
                 self.ai_score.run()
                 self.player_preview.run()
                 self.ai_preview.run()
 
-                if self.player_game.game_over or self.ai_game.game_over:
+                # overlay if one player loses
+                overlay = pygame.Surface((WINDOW_WIDTH // 2, WINDOW_HEIGHT), pygame.SRCALPHA)
+                overlay.fill((0, 0, 0, 150))
+                font = pygame.font.SysFont(None, 36)
+
+                if self.player_game.game_over and not self.ai_game.game_over:
+                    
+                    if self.player_lost_time is None:
+                        self.player_lost_time = pygame.time.get_ticks()
+
+                    # reduce ai delay over time 
+                    elapsed = pygame.time.get_ticks() - self.player_lost_time
+                    speedup = min(elapsed / 10000, 1)  
+                    self.ai_move_delay = int(500 - speedup * 450)
+                    self.ai_move_delay = max(self.ai_move_delay, self.min_ai_delay)
+
+                    self.display_surface.blit(overlay, (0, 0))
+                    line1 = font.render("You lost.", True, "white")
+                    line2 = font.render("Waiting for AI...", True, "white")
+
+                    line1_rect = line1.get_rect(center=(WINDOW_WIDTH // 4, WINDOW_HEIGHT // 2))
+                    line2_rect = line2.get_rect(center=(WINDOW_WIDTH // 4, WINDOW_HEIGHT // 2 + 30))
+
+                    self.display_surface.blit(line1, line1_rect)
+                    self.display_surface.blit(line2, line2_rect)
+
+
+                elif self.ai_game.game_over and not self.player_game.game_over:
+                    self.display_surface.blit(overlay, (WINDOW_WIDTH // 2, 0))
+                    line1 = font.render("AI lost.", True, "white")
+                    line2 = font.render("You can still play!", True, "white")
+                    
+                    line1_rect = line1.get_rect(center=(3 * WINDOW_WIDTH // 4, WINDOW_HEIGHT // 2))
+                    line2_rect = line2.get_rect(center=(3 * WINDOW_WIDTH // 4, WINDOW_HEIGHT // 2 + 30))
+
+                    self.display_surface.blit(line1, line1_rect)
+                    self.display_surface.blit(line2, line2_rect)
+
+                # game ends
+                if self.player_game.game_over and self.ai_game.game_over:
                     self.state = 'game_over'
 
             elif self.state == 'game_over':
-                draw_game_over_screen(self.display_surface, self.player_score.score)
-
+                self.game_over_buttons = draw_game_over_screen(self, self.display_surface)
+                for event in events:
+                    for button in self.game_over_buttons:
+                        button.handle_event(event)
+                        
             pygame.display.update()
             self.clock.tick()
+
+
+
 
 if __name__ == '__main__':
     main = Main()

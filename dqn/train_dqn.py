@@ -1,9 +1,10 @@
 import os
+import sys
 import json
 import torch
 import random
 import numpy as np
-from collections import deque
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from main import Main
 from ai_controller import get_valid_actions, get_lowest_valid_y, extract_features, evaluate_board
@@ -25,8 +26,8 @@ MEMORY_SIZE = 10000
 TARGET_UPDATE_FREQ = 10
 
 SAVE_PATH = "models"
-PRETRAINED_MODEL = os.path.join(SAVE_PATH, "dqn_pretrained.pt")
-GA_WEIGHTS_PATH = "saved_weights/best_weights_1748039070.json"
+PRETRAINED_MODEL = os.path.join(SAVE_PATH, "easy/dqn_easy.pt")
+GA_WEIGHTS_PATH = "ga/saved_weights/best_weights_1748039070.json"
 os.makedirs(SAVE_PATH, exist_ok=True)
 
 def train_agent():

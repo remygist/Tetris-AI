@@ -1,7 +1,7 @@
 from settings import *
 from random import choice
 from sys import exit
-from timer import Timer
+from game.timer import Timer
 from ai_controller import get_lowest_valid_y, get_valid_actions, evaluate_board, pick_best_action
 
 class Game: 
