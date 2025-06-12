@@ -2,6 +2,8 @@ from settings import *
 from sys import exit
 import torch
 import random
+import os
+import json
 
 # components
 from game.game import Game
@@ -25,7 +27,7 @@ class Main:
         self.menu_buttons = []
 
         # ai delay
-        self.ai_move_delay = 1000
+        self.ai_move_delay = 1
         self.last_ai_move_time = 0
         self.player_lost_time = None
         self.min_ai_delay = 50  # milliseconds
@@ -43,7 +45,7 @@ class Main:
         self.agent = None
 
         # stats
-        self.stats = self.init_stats()
+        self.load_stats()
         self.prev_player_lines = 0
         self.prev_ai_lines     = 0
 
@@ -58,37 +60,51 @@ class Main:
 
     def init_stats(self):
         return {
-            'games_played':       0,
-            'games_won':          0,
-            'history':           [],
-            'total_player_moves': 0,
-            'total_ai_moves':     0,
-            'total_player_lines': 0,
-            'total_ai_lines':     0
+            'games_played':           0,
+            'games_won':              0,
+            'history':               [],
+            'total_player_moves':     0,
+            'total_ai_moves':         0,
+            'total_player_lines':     0,
+            'total_ai_lines':         0,
+            'total_player_holes':     0,
+            'total_ai_holes':         0,
+            'total_player_tetrises':  0,
+            'total_ai_tetrises':      0
         }
 
     def update_player_score(self, lines, score, level):
+        # Update display score
         self.player_score.lines = lines
         self.player_score.score = score
         self.player_score.level = level
 
-        # count this as one “move” (if you still want moves here)
+        # Count this as a move
         self.stats['total_player_moves'] += 1
-        # only add the _new_ lines since last update
+
+        # Lines delta and tetrises
         delta = lines - self.prev_player_lines
         if delta > 0:
             self.stats['total_player_lines'] += delta
+            if delta == 4:
+                self.stats['total_player_tetrises'] += 1
         self.prev_player_lines = lines
 
     def update_ai_score(self, lines, score, level):
+        # Update display score
         self.ai_score.lines = lines
         self.ai_score.score = score
         self.ai_score.level = level
 
+        # Count this as a move
         self.stats['total_ai_moves'] += 1
+
+        # Lines delta and tetrises
         delta = lines - self.prev_ai_lines
         if delta > 0:
             self.stats['total_ai_lines'] += delta
+            if delta == 4:
+                self.stats['total_ai_tetrises'] += 1
         self.prev_ai_lines = lines
 
     def get_player_next_shape(self):
@@ -128,31 +144,55 @@ class Main:
         self.ai_score = Score(topleft=(ai_sidebar_pos[0], GAME_HEIGHT * PREVIEW_HEIGHT_FRACTION + PADDING * 2))
 
         # reset per-game stats
-        self.player_lost_time = None
-        self.stats['total_player_moves'] = 0
-        self.stats['total_ai_moves']     = 0
-        self.stats['total_player_lines'] = 0
-        self.stats['total_ai_lines']     = 0
-        # reset previous line counters too
+        keys = [
+        'total_player_moves','total_ai_moves',
+        'total_player_lines','total_ai_lines',
+        'total_player_holes','total_ai_holes',
+        'total_player_tetrises','total_ai_tetrises'
+    ]
+        for k in keys:
+            self.stats[k] = 0
+        # reset line‐delta tracking
         self.prev_player_lines = 0
         self.prev_ai_lines     = 0
 
     def record_stats(self):
-        # call when both games over
+        # first, record win/loss
         self.stats['games_played'] += 1
         if self.player_score.score > self.ai_score.score:
             self.stats['games_won'] += 1
-        # append history entry with detailed stats
-        self.stats['history'].append({
-            'player_score': self.player_score.score,
-            'ai_score':     self.ai_score.score,
-            'player_lines': self.stats['total_player_lines'],
-            'ai_lines':     self.stats['total_ai_lines'],
-            'player_moves': self.stats['total_player_moves'],
-            'ai_moves':     self.stats['total_ai_moves']
-        })
 
-        print(self.stats)
+        # build a 0/1 board for holes counting
+        player_board = [[1 if cell else 0 for cell in row]
+                        for row in self.player_game.field_data]
+        ai_board     = [[1 if cell else 0 for cell in row]
+                        for row in self.ai_game.field_data]
+
+        # extract_features returns a tensor: [holes, lines_cleared, ...]
+        p_feats = extract_features(player_board)
+        a_feats = extract_features(ai_board)
+        p_holes = int(p_feats[0].item())
+        a_holes = int(a_feats[0].item())
+
+        # snapshot everything
+        entry = {
+            'player_score':     self.player_score.score,
+            'ai_score':         self.ai_score.score,
+            'player_lines':     self.stats['total_player_lines'],
+            'ai_lines':         self.stats['total_ai_lines'],
+            'player_moves':     self.stats['total_player_moves'],
+            'ai_moves':         self.stats['total_ai_moves'],
+            'player_holes':     p_holes,
+            'ai_holes':         a_holes,
+            'player_tetrises':  self.stats['total_player_tetrises'],
+            'ai_tetrises':      self.stats['total_ai_tetrises'],
+        }
+        self.stats['history'].append(entry)
+
+        # accumulate totals for averages
+        self.stats['total_player_holes']    += p_holes
+        self.stats['total_ai_holes']        += a_holes
+
 
     def run(self):
         while True:
@@ -160,6 +200,7 @@ class Main:
 
             for event in events:
                 if event.type == pygame.QUIT:
+                    self.save_stats()     
                     pygame.quit()
                     exit()
 
@@ -303,11 +344,42 @@ class Main:
             elif self.state == 'stats':
                 buttons = draw_stats_screen(self, self.display_surface)
                 for event in pygame.event.get():
-                    buttons.handle_event(event)
+                    for btn in buttons:
+                        btn.handle_event(event)
 
                         
             pygame.display.update()
             self.clock.tick()
+
+    def load_stats(self):
+        if os.path.isfile('stats.json'):
+            try:
+                with open('stats.json', 'r') as f:
+                    data = json.load(f)
+                # ensure any missing keys get defaulted
+                base = self.init_stats()
+                base.update({k: data.get(k, base[k]) for k in base})
+                # merge history too
+                base['history'] = data.get('history', [])
+                self.stats = base
+            except Exception:
+                # if anything goes wrong, start fresh
+                self.stats = self.init_stats()
+        else:
+            self.stats = self.init_stats()
+
+    def save_stats(self):
+        try:
+            to_save = {
+                k: self.stats[k]
+                for k in self.stats
+                if k != 'history' or isinstance(self.stats['history'], list)
+            }
+            # history may be large but JSON can handle it
+            with open('stats.json', 'w') as f:
+                json.dump(to_save, f, indent=2)
+        except Exception as e:
+            print("Error saving stats:", e)
 
 
 

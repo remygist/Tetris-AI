@@ -1,0 +1,13 @@
+{
+  "games_played": 0,
+  "games_won": 0,
+  "history": [],
+  "total_player_moves": 0,
+  "total_ai_moves": 0,
+  "total_player_lines": 0,
+  "total_ai_lines": 0,
+  "total_player_holes": 0,
+  "total_ai_holes": 0,
+  "total_player_tetrises": 0,
+  "total_ai_tetrises": 0
+}

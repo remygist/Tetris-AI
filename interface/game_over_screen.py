@@ -33,6 +33,7 @@ def draw_game_over_screen(main_instance, surface):
         main_instance.state = 'stats'
 
     def quit_game():
+        main_instance.save_stats()
         pygame.quit()
         exit()
 

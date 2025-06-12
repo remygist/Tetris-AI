@@ -32,7 +32,8 @@ def start_game(main_instance):
     main_instance.input_blocked_until = pygame.time.get_ticks() + 300
 
 
-def quit_game():
+def quit_game(main_instance):
+    main_instance.save_stats()
     pygame.quit()
     exit()
 
@@ -54,7 +55,7 @@ def draw_start_screen(main_instance, surface):
 
     # buttons
     play_button = Button("Play", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2), menu_font, action=lambda: start_game(main_instance))
-    quit_button = Button("Quit", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 60), menu_font, action=quit_game)
+    quit_button = Button("Quit", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 60), menu_font, action=lambda: quit_game(main_instance))
     credits_button = Button("Credits", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 120), menu_font, action=show_credits)
 
     buttons = [play_button, quit_button, credits_button]
