@@ -9,6 +9,7 @@ from interface.score import Score
 from interface.preview import Preview
 from interface.start_screen import draw_start_screen, draw_difficulty_screen
 from interface.game_over_screen import draw_game_over_screen
+from interface.stats_screen import draw_stats_screen
 from game.bag_generator import BagGenerator
 from ai_controller import get_lowest_valid_y, get_valid_actions, extract_features
 from ga.ga import run_ga
@@ -41,24 +42,54 @@ class Main:
         self.difficulty = None
         self.agent = None
 
+        # stats
+        self.stats = self.init_stats()
+        self.prev_player_lines = 0
+        self.prev_ai_lines     = 0
+
         # components (left player, right AI)
-        self.player_game = Game(self.get_player_next_shape, self.update_player_score)
-        self.ai_game = Game(self.get_ai_next_shape, self.update_ai_score)
+        self.player_game = Game(self, self.get_player_next_shape, self.update_player_score)
+        self.ai_game = Game(self, self.get_ai_next_shape, self.update_ai_score)
 
         self.player_preview = Preview(self.player_next_shapes, topleft=(PADDING, PADDING))
         self.ai_preview = Preview(self.ai_next_shapes, topleft=(WINDOW_WIDTH // 2 + PADDING, PADDING))
 
         self.state = 'main_menu'
 
+    def init_stats(self):
+        return {
+            'games_played':       0,
+            'games_won':          0,
+            'history':           [],
+            'total_player_moves': 0,
+            'total_ai_moves':     0,
+            'total_player_lines': 0,
+            'total_ai_lines':     0
+        }
+
     def update_player_score(self, lines, score, level):
         self.player_score.lines = lines
         self.player_score.score = score
         self.player_score.level = level
 
+        # count this as one “move” (if you still want moves here)
+        self.stats['total_player_moves'] += 1
+        # only add the _new_ lines since last update
+        delta = lines - self.prev_player_lines
+        if delta > 0:
+            self.stats['total_player_lines'] += delta
+        self.prev_player_lines = lines
+
     def update_ai_score(self, lines, score, level):
         self.ai_score.lines = lines
         self.ai_score.score = score
         self.ai_score.level = level
+
+        self.stats['total_ai_moves'] += 1
+        delta = lines - self.prev_ai_lines
+        if delta > 0:
+            self.stats['total_ai_lines'] += delta
+        self.prev_ai_lines = lines
 
     def get_player_next_shape(self):
         next_shape = self.player_next_shapes.pop(0)
@@ -71,7 +102,7 @@ class Main:
         return next_shape
 
     def reset_game(self):
-        self.player_lost_time = None
+        self.ai_move_delay = 1000
         self.player_bag = BagGenerator()
         self.player_next_shapes = [self.player_bag.get_next() for _ in range(3)]
 
@@ -84,8 +115,8 @@ class Main:
         ai_gamefield_pos = (player_gamefield_pos[0] + GAME_WIDTH + PADDING * 2, PADDING)
         ai_sidebar_pos = (ai_gamefield_pos[0] + GAME_WIDTH + PADDING, PADDING)
 
-        self.player_game = Game(self.get_player_next_shape, self.update_player_score, topleft=player_gamefield_pos)
-        self.ai_game = Game(self.get_ai_next_shape, self.update_ai_score, topleft=ai_gamefield_pos)
+        self.player_game = Game(self, self.get_player_next_shape, self.update_player_score, topleft=player_gamefield_pos)
+        self.ai_game = Game(self, self.get_ai_next_shape, self.update_ai_score, topleft=ai_gamefield_pos)
 
         self.player_game.accept_input = True
         self.ai_game.accept_input = False
@@ -95,6 +126,33 @@ class Main:
 
         self.player_score = Score(topleft=(PADDING, GAME_HEIGHT * PREVIEW_HEIGHT_FRACTION + PADDING * 2))
         self.ai_score = Score(topleft=(ai_sidebar_pos[0], GAME_HEIGHT * PREVIEW_HEIGHT_FRACTION + PADDING * 2))
+
+        # reset per-game stats
+        self.player_lost_time = None
+        self.stats['total_player_moves'] = 0
+        self.stats['total_ai_moves']     = 0
+        self.stats['total_player_lines'] = 0
+        self.stats['total_ai_lines']     = 0
+        # reset previous line counters too
+        self.prev_player_lines = 0
+        self.prev_ai_lines     = 0
+
+    def record_stats(self):
+        # call when both games over
+        self.stats['games_played'] += 1
+        if self.player_score.score > self.ai_score.score:
+            self.stats['games_won'] += 1
+        # append history entry with detailed stats
+        self.stats['history'].append({
+            'player_score': self.player_score.score,
+            'ai_score':     self.ai_score.score,
+            'player_lines': self.stats['total_player_lines'],
+            'ai_lines':     self.stats['total_ai_lines'],
+            'player_moves': self.stats['total_player_moves'],
+            'ai_moves':     self.stats['total_ai_moves']
+        })
+
+        print(self.stats)
 
     def run(self):
         while True:
@@ -184,6 +242,7 @@ class Main:
                     if action:
                         rot_idx, x_pos = action
                         self.ai_game.apply_action(piece_type, rot_idx, x_pos)
+                        self.stats['total_ai_moves'] += 1
                         self.last_ai_move_time = current_time
 
                 # draw UI 
@@ -232,6 +291,7 @@ class Main:
 
                 # game ends
                 if self.player_game.game_over and self.ai_game.game_over:
+                    self.record_stats()
                     self.state = 'game_over'
 
             elif self.state == 'game_over':
@@ -239,6 +299,12 @@ class Main:
                 for event in events:
                     for button in self.game_over_buttons:
                         button.handle_event(event)
+            
+            elif self.state == 'stats':
+                buttons = draw_stats_screen(self, self.display_surface)
+                for event in pygame.event.get():
+                    buttons.handle_event(event)
+
                         
             pygame.display.update()
             self.clock.tick()
