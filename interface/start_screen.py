@@ -44,11 +44,11 @@ def draw_start_screen(main_instance, surface):
     surface.blit(background_image, (0,0))
 
     # fonts
-    title_font = pygame.font.Font(join('assets', 'Russo_One.ttf'), 72)
-    menu_font = pygame.font.Font(join('assets', 'Russo_One.ttf'), 36)
+    title_font = pygame.font.Font(join('assets', 'NeueHaasDisplayBlack.ttf'), 72)
+    menu_font = pygame.font.Font(join('assets', 'NeueHaasDisplayMediu.ttf'), 36)
     
     # title
-    title_text = title_font.render("Tetris AI", True, 'white')
+    title_text = title_font.render("NEUROBLOCKS", True, 'white')
     title_rect = title_text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 4))
     surface.blit(title_text, title_rect)
 
@@ -69,8 +69,8 @@ def draw_difficulty_screen(main_instance, surface):
     surface.blit(background_image, (0, 0))
 
     # Fonts
-    title_font = pygame.font.Font(join('assets', 'Russo_One.ttf'), 64)
-    menu_font = pygame.font.Font(join('assets', 'Russo_One.ttf'), 36)
+    title_font = pygame.font.Font(join('assets', 'NeueHaasDisplayBlack.ttf'), 64)
+    menu_font = pygame.font.Font(join('assets', 'NeueHaasDisplayMediu.ttf'), 36)
 
     # Title
     title_text = title_font.render("Select Difficulty", True, 'white')
