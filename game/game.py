@@ -6,7 +6,7 @@ from ai_controller import get_lowest_valid_y, get_valid_actions, evaluate_board,
 
 class Game: 
     
-    def __init__(self, get_next_shape, update_score, topleft=(PADDING, PADDING)):
+    def __init__(self, main_instance, get_next_shape, update_score, topleft=(PADDING, PADDING)):
 
         # general
         self.surface = pygame.Surface((GAME_WIDTH, GAME_HEIGHT))
@@ -15,6 +15,7 @@ class Game:
         self.sprites = pygame.sprite.Group()
         self.game_over = False
         self.accept_input = True
+        self.main = main_instance
 
         # game connection
         self.get_next_shape = get_next_shape
@@ -109,10 +110,12 @@ class Game:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_UP and not self.timers['rotate'].active:
                 self.tetromino.rotate()
+                self.main.stats['total_player_moves'] += 1
                 self.timers['rotate'].activate()
 
             if event.key == pygame.K_SPACE and not self.timers['touch down'].active:
                 self.tetromino.touch_down()
+                self.main.stats['total_player_moves'] += 1
                 self.timers['touch down'].activate()
 
         # Continuous actions (key held)
@@ -121,13 +124,16 @@ class Game:
         if not self.timers['horizontal move'].active:
             if keys[pygame.K_LEFT]:
                 self.tetromino.move_horizontal(-1)
+                self.main.stats['total_player_moves'] += 1
                 self.timers['horizontal move'].activate()
             elif keys[pygame.K_RIGHT]:
                 self.tetromino.move_horizontal(1)
+                self.main.stats['total_player_moves'] += 1
                 self.timers['horizontal move'].activate()
 
         if keys[pygame.K_DOWN] and not self.timers['move down'].active:
             self.tetromino.move_down()
+            self.main.stats['total_player_moves'] += 1
             self.timers['move down'].activate()
 
     def check_finished_rows(self):
@@ -176,6 +182,7 @@ class Game:
 
             if keys[pygame.K_DOWN] and not self.timers['move down'].active:
                 self.tetromino.move_down()
+                self.main.stats['total_player_moves'] += 1
                 self.timers['move down'].activate()
 
         self.timer_update()

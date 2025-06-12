@@ -29,7 +29,11 @@ def draw_game_over_screen(main_instance, surface):
         main_instance.reset_game()
         main_instance.state = 'main_menu'
 
+    def view_stats():
+        main_instance.state = 'stats'
+
     def quit_game():
+        main_instance.save_stats()
         pygame.quit()
         exit()
 
@@ -37,7 +41,8 @@ def draw_game_over_screen(main_instance, surface):
     buttons = [
         Button("Play Again", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2), menu_font, action=restart),
         Button("Back to Menu", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 60), menu_font, action=back_to_menu),
-        Button("Quit", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 120), menu_font, action=quit_game),
+        Button("View Stats", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 120), menu_font, action=view_stats),
+        Button("Quit", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 180), menu_font, action=quit_game),
     ]
 
     # Draw buttons
