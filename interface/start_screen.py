@@ -56,7 +56,7 @@ def draw_start_screen(main_instance, surface):
     # buttons
     play_button = Button("Play", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2), menu_font, action=lambda: start_game(main_instance))
     quit_button = Button("Quit", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 60), menu_font, action=lambda: quit_game(main_instance))
-    credits_button = Button("Credits", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 120), menu_font, action=show_credits)
+    credits_button = Button("Credits", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 120), menu_font, action=lambda: setattr(main_instance, "state", "credits"))
 
     buttons = [play_button, quit_button, credits_button]
     for button in buttons:
@@ -113,3 +113,41 @@ def draw_difficulty_screen(main_instance, surface):
 
     return buttons
 
+def draw_credits_screen(main_instance, surface):
+    surface.fill((15, 15, 15))  # dark background
+
+    # fonts
+    title_font = pygame.font.Font(join('assets', 'Russo_One.ttf'), 60)
+    text_font = pygame.font.Font(join('assets', 'Russo_One.ttf'), 28)
+
+    # title
+    title_surf = title_font.render("Credits", True, 'white')
+    title_rect = title_surf.get_rect(center=(WINDOW_WIDTH // 2, 80))
+    surface.blit(title_surf, title_rect)
+
+    # credit lines
+    lines = [
+        "Developed by: Rémy Gistelinck",
+        "Bachelor in Multimedia & Creative Technologies",
+        "Erasmushogeschool Brussel",
+        "",
+        "Made with:",
+        "- Python",
+        "- Pygame",
+        "- PyTorch",
+        ""
+    ]
+
+    for i, line in enumerate(lines):
+        line_surf = text_font.render(line, True, 'lightgray')
+        line_rect = line_surf.get_rect(center=(WINDOW_WIDTH // 2, 160 + i * 36))
+        surface.blit(line_surf, line_rect)
+
+    # back button
+    def back():
+        main_instance.state = 'main_menu'
+
+    back_btn = Button("Back", (WINDOW_WIDTH // 2, WINDOW_HEIGHT - 60), text_font, action=back)
+    back_btn.draw(surface)
+
+    return [back_btn]

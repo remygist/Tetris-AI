@@ -9,7 +9,7 @@ import json
 from game.game import Game
 from interface.score import Score
 from interface.preview import Preview
-from interface.start_screen import draw_start_screen, draw_difficulty_screen
+from interface.start_screen import draw_start_screen, draw_difficulty_screen, draw_credits_screen
 from interface.game_over_screen import draw_game_over_screen
 from interface.stats_screen import draw_stats_screen
 from game.bag_generator import BagGenerator
@@ -334,6 +334,13 @@ class Main:
                 for event in pygame.event.get():
                     for btn in buttons:
                         btn.handle_event(event)
+            
+            # draw credits screen
+            elif self.state == 'credits':
+                self.buttons = draw_credits_screen(self, self.display_surface)
+                for event in events:
+                    for button in self.buttons:
+                        button.handle_event(event)
     
             pygame.display.update()
             self.clock.tick()
