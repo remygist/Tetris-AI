@@ -1,6 +1,6 @@
 import pygame 
 
-# Game size 
+# game size 
 COLUMNS = 10
 ROWS = 20
 CELL_SIZE = 40
@@ -23,7 +23,7 @@ ROTATE_WAIT_TIME = 100
 BLOCK_OFFSET = pygame.Vector2(COLUMNS // 2, -1)
 LOCK_DELAY = 200
 
-# Colors 
+# colors 
 YELLOW = '#f1e60d'
 RED = '#e51b20'
 BLUE = '#204b9b'

@@ -4,13 +4,12 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import random
-import numpy as np
 
 from ai_controller import evaluate_board, extract_features
 from models.dqn_model import DQN
-from settings import TETROMINOS, COLUMNS, ROWS
+from settings import COLUMNS, ROWS
 
-# === Config ===
+# config
 SAMPLES = 5000
 BATCH_SIZE = 64
 EPOCHS = 5
@@ -20,7 +19,7 @@ SAVE_PATH = "models/dqn_pretrained.pt"
 
 def generate_random_board():
     board = [[0 for _ in range(COLUMNS)] for _ in range(ROWS)]
-    # Fill with random blocks
+    # fill with random blocks
     for y in range(ROWS):
         for x in range(COLUMNS):
             if random.random() < 0.1:  # 10% chance of being filled

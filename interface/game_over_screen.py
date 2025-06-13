@@ -1,25 +1,25 @@
 import pygame
 from settings import *
 from os.path import join
-from interface.start_screen import Button  # Reuse the Button class
+from interface.start_screen import Button
 
 def draw_game_over_screen(main_instance, surface):
-    # fonts
-    title_font = pygame.font.Font(join('assets','Russo_One.ttf'), 64)
-    menu_font = pygame.font.Font(join('assets','Russo_One.ttf'), 36)
+    # fonts for title and buttons
+    title_font = pygame.font.Font(join('assets', 'Russo_One.ttf'), 64)
+    menu_font = pygame.font.Font(join('assets', 'Russo_One.ttf'), 36)
 
-    # Background
-    surface.fill((20, 20, 20))  # dark background
+    # background
+    surface.fill((20, 20, 20))
 
-    # Game Over title
+    # game over title
     game_over_text = title_font.render("Game Over", True, 'red')
     surface.blit(game_over_text, game_over_text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 4)))
 
-    # Final score
+    # player’s score
     score_text = menu_font.render(f"Final Score: {main_instance.player_score.score}", True, 'white')
     surface.blit(score_text, score_text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 4 + 60)))
 
-    # Buttons
+    # button actions
     def restart():
         main_instance.reset_game()
         main_instance.state = 'playing'
@@ -37,15 +37,15 @@ def draw_game_over_screen(main_instance, surface):
         pygame.quit()
         exit()
 
-    # Create buttons
+    # create buttons
     buttons = [
         Button("Play Again", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2), menu_font, action=restart),
-        Button("Back to Menu", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 60), menu_font, action=back_to_menu),
-        Button("View Stats", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 120), menu_font, action=view_stats),
+        Button("View Stats", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 60), menu_font, action=view_stats),
+        Button("Back to Menu", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 120), menu_font, action=back_to_menu),
         Button("Quit", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 180), menu_font, action=quit_game),
     ]
 
-    # Draw buttons
+    # draw button
     for button in buttons:
         button.draw(surface)
 

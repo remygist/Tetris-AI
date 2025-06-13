@@ -118,7 +118,7 @@ def evaluate_board(board, weights):
 
 def pick_best_action(piece_type, board, weights=None):
     if weights is None:
-        # Fallback to default weights
+        # fallback to default weights
         weights = [-5.0, 3.0, -0.5, -0.1]
 
     best_score = float('-inf')
@@ -130,7 +130,8 @@ def pick_best_action(piece_type, board, weights=None):
 
         if y is None:
             continue
-
+        
+        # simulate dropping the piece
         temp_board = [row[:] for row in board]
         for dx, dy in rotation:
             px = x_pos + dx
@@ -138,6 +139,7 @@ def pick_best_action(piece_type, board, weights=None):
             if 0 <= px < COLUMNS and 0 <= py < ROWS:
                 temp_board[py][px] = 1
 
+        # evaluate the resulting board
         score = evaluate_board(temp_board, weights)
         if score > best_score:
             best_score = score
