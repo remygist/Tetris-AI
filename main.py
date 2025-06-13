@@ -18,27 +18,18 @@ from ga.ga import run_ga
 
 class Main:
     def __init__(self):
-        # general
+        # general setup
         pygame.init()
         self.display_surface = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.clock = pygame.time.Clock()
-        pygame.display.set_caption('Tetris')
+        pygame.display.set_caption('NEUROBLOCKS')
         self.input_blocked_until = 0
         self.menu_buttons = []
 
-        # ai delay
-        self.ai_move_delay = 1
+        # ai timing control
         self.last_ai_move_time = 0
         self.player_lost_time = None
         self.min_ai_delay = 50  # milliseconds
-
-        # random bags
-        self.player_bag = BagGenerator()
-        self.ai_bag = BagGenerator()
-
-        # shapes queues
-        self.player_next_shapes = [self.player_bag.get_next() for _ in range(3)]
-        self.ai_next_shapes = [self.ai_bag.get_next() for _ in range(3)]
 
         # difficulty
         self.difficulty = None
@@ -49,28 +40,24 @@ class Main:
         self.prev_player_lines = 0
         self.prev_ai_lines     = 0
 
-        # components (left player, right AI)
-        self.player_game = Game(self, self.get_player_next_shape, self.update_player_score)
-        self.ai_game = Game(self, self.get_ai_next_shape, self.update_ai_score)
-
-        self.player_preview = Preview(self.player_next_shapes, topleft=(PADDING, PADDING))
-        self.ai_preview = Preview(self.ai_next_shapes, topleft=(WINDOW_WIDTH // 2 + PADDING, PADDING))
-
+        # init state
         self.state = 'main_menu'
 
     def init_stats(self):
         return {
-            'games_played':           0,
-            'games_won':              0,
-            'history':               [],
-            'total_player_moves':     0,
-            'total_ai_moves':         0,
-            'total_player_lines':     0,
-            'total_ai_lines':         0,
-            'total_player_holes':     0,
-            'total_ai_holes':         0,
-            'total_player_tetrises':  0,
-            'total_ai_tetrises':      0
+            'games_played': 0,
+            'games_won': 0,
+            'history': [],
+            'total_player_score': 0,
+            'total_ai_score': 0,
+            'total_player_moves': 0,
+            'total_ai_moves': 0,
+            'total_player_lines': 0,
+            'total_ai_lines': 0,
+            'total_player_holes': 0,
+            'total_ai_holes': 0,
+            'total_player_tetrises': 0,
+            'total_ai_tetrises': 0
         }
 
     def update_player_score(self, lines, score, level):
@@ -79,10 +66,7 @@ class Main:
         self.player_score.score = score
         self.player_score.level = level
 
-        # Count this as a move
-        self.stats['total_player_moves'] += 1
-
-        # Lines delta and tetrises
+        # track line clears and tetrises
         delta = lines - self.prev_player_lines
         if delta > 0:
             self.stats['total_player_lines'] += delta
@@ -96,10 +80,7 @@ class Main:
         self.ai_score.score = score
         self.ai_score.level = level
 
-        # Count this as a move
-        self.stats['total_ai_moves'] += 1
-
-        # Lines delta and tetrises
+        # track line clears and tetrises
         delta = lines - self.prev_ai_lines
         if delta > 0:
             self.stats['total_ai_lines'] += delta
@@ -119,12 +100,14 @@ class Main:
 
     def reset_game(self):
         self.ai_move_delay = 1000
+
+        # shapes queue
         self.player_bag = BagGenerator()
         self.player_next_shapes = [self.player_bag.get_next() for _ in range(3)]
-
         self.ai_bag = BagGenerator()
         self.ai_next_shapes = [self.ai_bag.get_next() for _ in range(3)]
 
+        # position gamefields and ui
         player_gamefield_pos = (PADDING + SIDEBAR_WIDTH + PADDING, PADDING)
         player_sidebar_pos = (PADDING, PADDING)
 
@@ -143,7 +126,7 @@ class Main:
         self.player_score = Score(topleft=(PADDING, GAME_HEIGHT * PREVIEW_HEIGHT_FRACTION + PADDING * 2))
         self.ai_score = Score(topleft=(ai_sidebar_pos[0], GAME_HEIGHT * PREVIEW_HEIGHT_FRACTION + PADDING * 2))
 
-        # reset per-game stats
+        # reset stats
         keys = [
         'total_player_moves','total_ai_moves',
         'total_player_lines','total_ai_lines',
@@ -152,64 +135,63 @@ class Main:
     ]
         for k in keys:
             self.stats[k] = 0
-        # reset line‐delta tracking
         self.prev_player_lines = 0
         self.prev_ai_lines     = 0
 
     def record_stats(self):
-        # first, record win/loss
+        # add games won to stats
         self.stats['games_played'] += 1
         if self.player_score.score > self.ai_score.score:
             self.stats['games_won'] += 1
 
-        # build a 0/1 board for holes counting
-        player_board = [[1 if cell else 0 for cell in row]
-                        for row in self.player_game.field_data]
-        ai_board     = [[1 if cell else 0 for cell in row]
-                        for row in self.ai_game.field_data]
+        # get board features
+        player_board = [[1 if cell else 0 for cell in row] for row in self.player_game.field_data]
+        ai_board     = [[1 if cell else 0 for cell in row] for row in self.ai_game.field_data]
 
-        # extract_features returns a tensor: [holes, lines_cleared, ...]
-        p_feats = extract_features(player_board)
-        a_feats = extract_features(ai_board)
-        p_holes = int(p_feats[0].item())
-        a_holes = int(a_feats[0].item())
+        player_feats = extract_features(player_board)
+        ai_feats = extract_features(ai_board)
 
-        # snapshot everything
+        player_holes = int(player_feats[0].item())
+        ai_holes = int(ai_feats[0].item())
+
         entry = {
-            'player_score':     self.player_score.score,
-            'ai_score':         self.ai_score.score,
-            'player_lines':     self.stats['total_player_lines'],
-            'ai_lines':         self.stats['total_ai_lines'],
-            'player_moves':     self.stats['total_player_moves'],
-            'ai_moves':         self.stats['total_ai_moves'],
-            'player_holes':     p_holes,
-            'ai_holes':         a_holes,
-            'player_tetrises':  self.stats['total_player_tetrises'],
-            'ai_tetrises':      self.stats['total_ai_tetrises'],
+            'player_score': self.player_score.score,
+            'ai_score': self.ai_score.score,
+            'player_lines': self.stats['total_player_lines'],
+            'ai_lines': self.stats['total_ai_lines'],
+            'player_moves': self.stats['total_player_moves'],
+            'ai_moves': self.stats['total_ai_moves'],
+            'player_holes': player_holes,
+            'ai_holes': ai_holes,
+            'player_tetrises': self.stats['total_player_tetrises'],
+            'ai_tetrises': self.stats['total_ai_tetrises'],
         }
         self.stats['history'].append(entry)
 
-        # accumulate totals for averages
-        self.stats['total_player_holes']    += p_holes
-        self.stats['total_ai_holes']        += a_holes
-
+        # update totals
+        self.stats['total_player_holes'] += player_holes
+        self.stats['total_ai_holes'] += ai_holes
+        self.stats['total_player_score'] += self.player_score.score
+        self.stats['total_ai_score'] += self.ai_score.score
 
     def run(self):
         while True:
             events = pygame.event.get()
 
+            # quit game
             for event in events:
                 if event.type == pygame.QUIT:
                     self.save_stats()     
                     pygame.quit()
                     exit()
 
-            # buttons per screen
+            # buttons main menu
             if self.state == 'main_menu':
                 for event in events:
                     for button in self.menu_buttons:
                         button.handle_event(event)
 
+           # buttons difficulty menu
             elif self.state == 'difficulty_select':
                 if pygame.time.get_ticks() > self.input_blocked_until:
                     for event in events:
@@ -223,14 +205,17 @@ class Main:
                         self.state = 'playing'
                         self.input_blocked_until = pygame.time.get_ticks() + 200
 
-            # draw main and selection screen
+            # draw main background
             self.display_surface.fill(GRAY)
 
+            # draw main menu
             if self.state == 'main_menu':
                 self.menu_buttons = draw_start_screen(self, self.display_surface)
-
+            
+            # draw difficulty menu
             elif self.state == 'difficulty_select':
                 self.difficulty_buttons = draw_difficulty_screen(self, self.display_surface)
+            
 
             elif self.state == 'playing':
                 # avoid instant placing after game start
@@ -239,9 +224,10 @@ class Main:
                 else:
                     self.player_game.run(events)
 
+                # run ai game logic
                 self.ai_game.run([])
 
-                # ai 
+                # ai choose move
                 current_time = pygame.time.get_ticks()
                 if not self.ai_game.game_over and current_time - self.last_ai_move_time > self.ai_move_delay:
                     piece_type = self.ai_game.tetromino.shape
@@ -280,6 +266,7 @@ class Main:
                         if random.random() < chance and valid_actions:
                             action = random.choice(valid_actions)
 
+                    # apply ai move
                     if action:
                         rot_idx, x_pos = action
                         self.ai_game.apply_action(piece_type, rot_idx, x_pos)
@@ -298,7 +285,6 @@ class Main:
                 font = pygame.font.SysFont(None, 36)
 
                 if self.player_game.game_over and not self.ai_game.game_over:
-                    
                     if self.player_lost_time is None:
                         self.player_lost_time = pygame.time.get_ticks()
 
@@ -335,19 +321,20 @@ class Main:
                     self.record_stats()
                     self.state = 'game_over'
 
+            # draw game over screen
             elif self.state == 'game_over':
                 self.game_over_buttons = draw_game_over_screen(self, self.display_surface)
                 for event in events:
                     for button in self.game_over_buttons:
                         button.handle_event(event)
             
+            # draw stats screen
             elif self.state == 'stats':
                 buttons = draw_stats_screen(self, self.display_surface)
                 for event in pygame.event.get():
                     for btn in buttons:
                         btn.handle_event(event)
-
-                        
+    
             pygame.display.update()
             self.clock.tick()
 
@@ -356,14 +343,11 @@ class Main:
             try:
                 with open('stats.json', 'r') as f:
                     data = json.load(f)
-                # ensure any missing keys get defaulted
                 base = self.init_stats()
                 base.update({k: data.get(k, base[k]) for k in base})
-                # merge history too
                 base['history'] = data.get('history', [])
                 self.stats = base
             except Exception:
-                # if anything goes wrong, start fresh
                 self.stats = self.init_stats()
         else:
             self.stats = self.init_stats()
@@ -375,14 +359,10 @@ class Main:
                 for k in self.stats
                 if k != 'history' or isinstance(self.stats['history'], list)
             }
-            # history may be large but JSON can handle it
             with open('stats.json', 'w') as f:
                 json.dump(to_save, f, indent=2)
         except Exception as e:
             print("Error saving stats:", e)
-
-
-
 
 if __name__ == '__main__':
     main = Main()

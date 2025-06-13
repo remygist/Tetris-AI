@@ -10,15 +10,15 @@ def train_step(policy_net, target_net, replay_memory, optimizer, batch_size=64, 
     next_state_batch = torch.stack([experience[3] for experience in batch])
     done_batch = torch.tensor([experience[4] for experience in batch], dtype=torch.float32).unsqueeze(1)
 
-    # Compute Q(s, a)
+    # compute Q(s, a)
     q_values = policy_net(state_batch)
 
-    # Compute target Q-values
+    # compute target Q-values
     with torch.no_grad():
         target_q_values = target_net(next_state_batch)
         targets = reward_batch + gamma * target_q_values * (1 - done_batch)
 
-    # Loss = MSE between predicted and target Q-values
+    # loss = MSE between predicted and target Q-values
     loss = nn.MSELoss()(q_values, targets)
 
     optimizer.zero_grad()

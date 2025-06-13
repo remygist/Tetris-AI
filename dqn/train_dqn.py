@@ -4,6 +4,8 @@ import json
 import torch
 import random
 import numpy as np
+
+# allow imports from root project folder
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from main import Main
@@ -13,7 +15,7 @@ from replay_memory import ReplayMemory
 from train_utils import train_step
 from settings import COLUMNS, ROWS, TETROMINOS
 
-# === Config ===
+# config
 EPISODES = 500
 MAX_STEPS = 1000
 EPSILON_START = 0.8
@@ -25,6 +27,7 @@ LEARNING_RATE = 0.0005
 MEMORY_SIZE = 10000
 TARGET_UPDATE_FREQ = 10
 
+# paths
 SAVE_PATH = "models"
 PRETRAINED_MODEL = os.path.join(SAVE_PATH, "easy/dqn_easy.pt")
 GA_WEIGHTS_PATH = "ga/saved_weights/best_weights_1748039070.json"
@@ -35,8 +38,8 @@ def train_agent():
     model = DQN()
     target_model = DQN()
 
+    # load pretrained weights
     if os.path.exists(PRETRAINED_MODEL):
-        print("\n🔁 Loading pretrained model...")
         model.load_state_dict(torch.load(PRETRAINED_MODEL))
         target_model.load_state_dict(model.state_dict())
         model.eval()
@@ -47,9 +50,11 @@ def train_agent():
     memory = ReplayMemory(MEMORY_SIZE)
     epsilon = EPSILON_START
 
+    # load genetic algorithm weights
     with open(GA_WEIGHTS_PATH, "r") as f:
         ga_weights = json.load(f)
 
+    # training loop
     for episode in range(EPISODES):
         main.reset_game()
         state = extract_features([[1 if cell else 0 for cell in row] for row in main.ai_game.field_data])
@@ -64,9 +69,9 @@ def train_agent():
             if not valid_actions:
                 break
 
-            # === Exploration strategy with GA fallback ===
+            # epsilon-greedy action selection
             if random.random() < epsilon:
-                # Instead of random move, use GA heuristic
+                # use genetic algorithm to guide exploration instead of random moves
                 best_score = float('-inf')
                 best_action = None
                 for rot_idx, x_pos in valid_actions:
@@ -85,6 +90,7 @@ def train_agent():
                         best_action = (rot_idx, x_pos)
                 action = best_action or random.choice(valid_actions)
             else:
+                # use dqn to select best q-value move
                 q_values = []
                 actions = []
                 for (rot_idx, x_pos) in valid_actions:
@@ -104,25 +110,33 @@ def train_agent():
                     actions.append((rot_idx, x_pos))
                 action = actions[np.argmax(q_values)] if actions else random.choice(valid_actions)
 
+            # apply action to game
             prev_lines = main.ai_score.lines
             rot_idx, x_pos = action
             main.ai_game.apply_action(piece_type, rot_idx, x_pos)
+
+            # get reward
             lines_cleared = main.ai_score.lines - prev_lines
             next_state = extract_features([[1 if cell else 0 for cell in row] for row in main.ai_game.field_data])
             max_height = max([ROWS - y for y in range(ROWS) if any(board[y])]) if any(any(row) for row in board) else 0
             reward = lines_cleared * 10 - 0.2 * max_height
 
+            # store experience
             memory.push(state, action, reward, next_state, main.ai_game.game_over)
+
             state = next_state
             total_reward += reward
             steps += 1
 
+            # train model if memory is large enough
             if len(memory) > BATCH_SIZE:
                 loss = train_step(model, target_model, memory, optimizer, batch_size=BATCH_SIZE, gamma=GAMMA)
 
+        # sync target network
         if episode % TARGET_UPDATE_FREQ == 0:
             target_model.load_state_dict(model.state_dict())
 
+        # decay exploration rate
         if epsilon > EPSILON_END:
             epsilon *= EPSILON_DECAY
 

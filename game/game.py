@@ -5,7 +5,6 @@ from game.timer import Timer
 from ai_controller import get_lowest_valid_y, get_valid_actions, evaluate_board, pick_best_action
 
 class Game: 
-    
     def __init__(self, main_instance, get_next_shape, update_score, topleft=(PADDING, PADDING)):
 
         # general
@@ -58,6 +57,7 @@ class Game:
         self.current_lines += num_lines
         self.current_score += SCORE_DATA[num_lines] * self.current_level
 
+        # level up every 10 lines
         if self.current_lines/10 > self.current_level:
             self.current_level += 1
             self.down_speed *= 0.75
@@ -94,7 +94,6 @@ class Game:
         self.tetromino.move_down()
 
     def draw_grid(self):
-
         for col in range (1, COLUMNS):
             x = col * CELL_SIZE
             pygame.draw.line(self.line_surface, LINE_COLOR, (x,0),(x,self.surface.get_height()),1)
@@ -106,7 +105,7 @@ class Game:
         self.surface.blit(self.line_surface, (0,0))
 
     def input(self, event):
-    # One-time actions (on key press)
+    # one-time actions (on key press)
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_UP and not self.timers['rotate'].active:
                 self.tetromino.rotate()
@@ -118,7 +117,7 @@ class Game:
                 self.main.stats['total_player_moves'] += 1
                 self.timers['touch down'].activate()
 
-        # Continuous actions (key held)
+        # continuous actions (key held)
         keys = pygame.key.get_pressed()
 
         if not self.timers['horizontal move'].active:
@@ -149,7 +148,7 @@ class Game:
                 for block in self.field_data[delete_row]:
                     block.kill()
                 
-                #move down blocks
+                # move down blocks
                 for row in self.field_data:
                     for block in row:
                         if block and block.pos.y < delete_row:
@@ -164,12 +163,12 @@ class Game:
             self.calculate_score(len(delete_rows))
     
     def run(self, events):
-        # Process single-tap keys (rotation, hard drop)
+        # handle single-tap keys (rotation, hard drop)
         if self.accept_input:
             for event in events:
                 self.input(event)
 
-            # Process held keys (left/right/down movement)
+            # handle held keys (left/right/down movement)
             keys = pygame.key.get_pressed()
 
             if not self.timers['horizontal move'].active:
@@ -226,7 +225,6 @@ class Game:
 
         
 class Tetromino:
-
     def __init__(self, shape, group, create_new_tetromino, field_data):
 
         # setup
@@ -253,8 +251,8 @@ class Tetromino:
             for pos in ghost_positions:
                 x, y = int(pos.x), int(pos.y + 1)
                 if y >= ROWS or self.field_data[y][x]:
-                    return ghost_positions  # Stop if any part would collide
-            # Move all ghost blocks down
+                    return ghost_positions  # stop if any part would collide
+            # move all ghost blocks down
             for pos in ghost_positions:
                 pos.y += 1
 
@@ -292,7 +290,6 @@ class Tetromino:
                 if self.lock_resets >= self.max_lock_resets:
                     self.force_lock()
 
-    
     def touch_down(self):
         drop_distances = []
 
@@ -351,7 +348,6 @@ class Tetromino:
         self.create_new_tetromino(game_over=game_over)
 
 class Block(pygame.sprite.Sprite):
-
     def __init__(self, group, pos, color):
 
         # general

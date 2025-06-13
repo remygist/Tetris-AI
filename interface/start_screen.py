@@ -31,7 +31,7 @@ def start_game(main_instance):
     main_instance.state = 'difficulty_select'
     main_instance.input_blocked_until = pygame.time.get_ticks() + 300
 
-
+# save stats and exit
 def quit_game(main_instance):
     main_instance.save_stats()
     pygame.quit()
@@ -65,20 +65,20 @@ def draw_start_screen(main_instance, surface):
     return buttons
 
 def draw_difficulty_screen(main_instance, surface):
-    # Load and draw background
+    # draw background
     background_image = pygame.image.load(join('assets', 'background.png')).convert()
     surface.blit(background_image, (0, 0))
 
-    # Fonts
+    # fonts
     title_font = pygame.font.Font(join('assets', 'NeueHaasDisplayBlack.ttf'), 64)
     menu_font = pygame.font.Font(join('assets', 'NeueHaasDisplayMediu.ttf'), 36)
 
-    # Title
+    # title
     title_text = title_font.render("Select Difficulty", True, 'white')
     title_rect = title_text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 4))
     surface.blit(title_text, title_rect)
 
-    # Define actions for each difficulty
+    # difficulty button actions
     def set_easy():
         main_instance.difficulty = 'easy'
         main_instance.agent = set_agent_model('easy')
@@ -92,7 +92,6 @@ def draw_difficulty_screen(main_instance, surface):
         main_instance.reset_game()
         main_instance.state = 'playing'
         main_instance.input_blocked_until = pygame.time.get_ticks() + 200
-        print("medium")
 
     def set_hard():
         main_instance.difficulty = 'hard'
@@ -100,16 +99,15 @@ def draw_difficulty_screen(main_instance, surface):
         main_instance.reset_game()
         main_instance.state = 'playing'
         main_instance.input_blocked_until = pygame.time.get_ticks() + 200
-        print("hard")
 
-    # Create difficulty buttons
+    # create buttons
     easy_button = Button("Easy", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 40), menu_font, action=set_easy)
     medium_button = Button("Medium", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 20), menu_font, action=set_medium)
     hard_button = Button("Hard", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 80), menu_font, action=set_hard)
 
     buttons = [easy_button, medium_button, hard_button]
 
-    # Draw buttons
+    # draw buttons
     for button in buttons:
         button.draw(surface)
 

@@ -1,13 +1,64 @@
 {
-  "games_played": 0,
+  "games_played": 4,
   "games_won": 0,
-  "history": [],
-  "total_player_moves": 0,
-  "total_ai_moves": 0,
-  "total_player_lines": 0,
-  "total_ai_lines": 0,
-  "total_player_holes": 0,
-  "total_ai_holes": 0,
+  "history": [
+    {
+      "player_score": 300,
+      "ai_score": 4400,
+      "player_lines": 3,
+      "ai_lines": 35,
+      "player_moves": 56,
+      "ai_moves": 131,
+      "player_holes": 21,
+      "ai_holes": 21,
+      "player_tetrises": 0,
+      "ai_tetrises": 0
+    },
+    {
+      "player_score": 120,
+      "ai_score": 3520,
+      "player_lines": 3,
+      "ai_lines": 27,
+      "player_moves": 50,
+      "ai_moves": 105,
+      "player_holes": 25,
+      "ai_holes": 24,
+      "player_tetrises": 0,
+      "ai_tetrises": 1
+    },
+    {
+      "player_score": 0,
+      "ai_score": 5860,
+      "player_lines": 0,
+      "ai_lines": 43,
+      "player_moves": 8,
+      "ai_moves": 151,
+      "player_holes": 24,
+      "ai_holes": 20,
+      "player_tetrises": 0,
+      "ai_tetrises": 0
+    },
+    {
+      "player_score": 180,
+      "ai_score": 8500,
+      "player_lines": 4,
+      "ai_lines": 57,
+      "player_moves": 74,
+      "ai_moves": 182,
+      "player_holes": 21,
+      "ai_holes": 31,
+      "player_tetrises": 0,
+      "ai_tetrises": 0
+    }
+  ],
+  "total_player_score": 180,
+  "total_ai_score": 14360,
+  "total_player_moves": 74,
+  "total_ai_moves": 182,
+  "total_player_lines": 4,
+  "total_ai_lines": 57,
+  "total_player_holes": 21,
+  "total_ai_holes": 31,
   "total_player_tetrises": 0,
   "total_ai_tetrises": 0
 }
